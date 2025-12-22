@@ -1,4 +1,4 @@
-// --- 1. Firebase Configuration (เปลี่ยนเป็นของคุณ) ---
+// --- 1. Firebase Configuration (ใส่ข้อมูลของคุณที่นี่) ---
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -14,14 +14,14 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// Variables
+// Global Variables
 let loanChart;
 const loanModal = document.getElementById("loanModal");
 const openModalBtn = document.getElementById("openModalBtn");
 const closeModal = document.querySelector(".close");
 const loanForm = document.getElementById("loanForm");
 
-// --- 2. Modal Controls ---
+// --- 2. Modal Logic ---
 openModalBtn.onclick = () => loanModal.style.display = "block";
 closeModal.onclick = () => loanModal.style.display = "none";
 window.onclick = (e) => { if (e.target == loanModal) loanModal.style.display = "none"; };
@@ -30,60 +30,74 @@ window.onclick = (e) => { if (e.target == loanModal) loanModal.style.display = "
 async function loadDashboardData(startDate = null, endDate = null) {
     let query = db.collection("loans");
 
+    // การกรองข้อมูล
     if (startDate && endDate) {
         query = query.where("loanDate", ">=", startDate).where("loanDate", "<=", endDate);
     }
 
     try {
+        // แนะนำ: หากหน้าจอค้างหรือไม่แสดงผล ให้กด F12 ดู Console หากเจอลิงก์ให้สร้าง Index ให้กดสร้างทันที
         const snapshot = await query.orderBy("loanDate", "asc").get();
+        
         let totalPrincipal = 0;
         let totalPaid = 0;
-        let monthlyStats = {};
+        let monthlyData = {};
+
+        if (snapshot.empty) {
+            console.log("No data found.");
+        }
 
         snapshot.forEach(doc => {
             const data = doc.data();
             const principal = parseFloat(data.principal) || 0;
             const interest = parseFloat(data.interest) || 0;
+            const loanDate = data.loanDate || "";
 
-            // 1. คำนวณเงินต้นรวมทั้งหมดที่มีในระบบ (ตาม Filter)
             totalPrincipal += principal;
 
-            // 2. คำนวณยอดที่ปิดยอดไปแล้ว (ต้น + ดอก)
             if (data.status === "คืนแล้ว") {
                 totalPaid += (principal + interest);
             }
 
-            // 3. เตรียมข้อมูลกราฟ (รายเดือน)
-            const month = data.loanDate.substring(0, 7); // เก็บค่า YYYY-MM
-            monthlyStats[month] = (monthlyStats[month] || 0) + principal;
+            // จัดกลุ่มยอดกู้รายเดือนสำหรับกราฟ
+            if (loanDate) {
+                const monthYear = loanDate.substring(0, 7); // YYYY-MM
+                monthlyData[monthYear] = (monthlyData[monthYear] || 0) + principal;
+            }
         });
 
-        // อัปเดต UI
+        // อัปเดตตัวเลขบนหน้าเว็บ
         document.getElementById("totalLoans").innerText = totalPrincipal.toLocaleString() + " ฿";
         document.getElementById("paidAmount").innerText = totalPaid.toLocaleString() + " ฿";
 
-        renderChart(monthlyStats);
+        renderChart(monthlyData);
 
     } catch (error) {
-        console.error("Error loading data: ", error);
+        console.error("Firebase Error:", error);
+        // หากพบ Error เรื่อง Index ระบบจะแจ้งลิงก์ในหน้า Console
     }
 }
 
 // --- 4. ฟังก์ชันจัดการกราฟ ---
-function renderChart(monthlyData) {
+function renderChart(stats) {
     const ctx = document.getElementById('loanChart').getContext('2d');
     
-    if (loanChart) loanChart.destroy();
+    if (loanChart) {
+        loanChart.destroy(); // ต้องลบกราฟเก่าออกก่อนวาดใหม่เมื่อมีการ Filter
+    }
+
+    const labels = Object.keys(stats);
+    const values = Object.values(stats);
 
     loanChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: Object.keys(monthlyData),
+            labels: labels,
             datasets: [{
-                label: 'ยอดปล่อยกู้ (เงินต้น)',
-                data: Object.values(monthlyData),
-                backgroundColor: '#007bff',
-                borderColor: '#0056b3',
+                label: 'ยอดปล่อยกู้ใหม่ (บาท)',
+                data: values,
+                backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                borderColor: '#2980b9',
                 borderWidth: 1,
                 borderRadius: 5
             }]
@@ -92,21 +106,24 @@ function renderChart(monthlyData) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true }
+                y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                x: { grid: { display: false } }
+            },
+            plugins: {
+                legend: { display: false }
             }
         }
     });
 }
 
-// --- 5. บันทึกข้อมูลใหม่ ---
-loanForm.onsubmit = async (e) => {
+// --- 5. บันทึกข้อมูล ---
+loanForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    
-    const submitBtn = loanForm.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.innerText = "กำลังบันทึก...";
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    saveBtn.innerText = "กำลังบันทึก...";
 
-    const formData = {
+    const newEntry = {
         nickname: document.getElementById("nickname").value,
         nameSurname: document.getElementById("nameSurname").value,
         idCard: document.getElementById("idCard").value,
@@ -119,27 +136,27 @@ loanForm.onsubmit = async (e) => {
     };
 
     try {
-        await db.collection("loans").add(formData);
-        alert("บันทึกข้อมูลเรียบร้อย!");
+        await db.collection("loans").add(newEntry);
+        alert("บันทึกข้อมูลเรียบร้อยแล้ว!");
         loanForm.reset();
         loanModal.style.display = "none";
-        loadDashboardData(); // Refresh ข้อมูล
-    } catch (error) {
-        alert("เกิดข้อผิดพลาด: " + error.message);
+        loadDashboardData(); // รีโหลดข้อมูลใหม่
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "บันทึกข้อมูล";
+        saveBtn.disabled = false;
+        saveBtn.innerText = "บันทึกข้อมูล";
     }
-};
+});
 
-// --- 6. ระบบ Filter ---
+// --- 6. ปุ่ม Filter และ Reset ---
 document.getElementById("filterBtn").onclick = () => {
-    const start = document.getElementById("startDate").value;
-    const end = document.getElementById("endDate").value;
-    if (start && end) {
-        loadDashboardData(start, end);
+    const sDate = document.getElementById("startDate").value;
+    const eDate = document.getElementById("endDate").value;
+    if (sDate && eDate) {
+        loadDashboardData(sDate, eDate);
     } else {
-        alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด");
+        alert("กรุณาระบุวันที่ให้ครบทั้งสองช่อง");
     }
 };
 
@@ -149,5 +166,5 @@ document.getElementById("resetBtn").onclick = () => {
     loadDashboardData();
 };
 
-// โหลดข้อมูลครั้งแรกเมื่อเปิดหน้า
-window.onload = loadDashboardData;
+// โหลดครั้งแรก
+window.onload = () => loadDashboardData();
