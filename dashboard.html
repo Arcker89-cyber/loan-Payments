@@ -12,17 +12,21 @@
 <body>
 
 <div class="container">
-  <h2>Dashboard เงินกู้</h2>
+
+  <header>
+    <h1>Dashboard ระบบเงินกู้</h1>
+  </header>
 
   <!-- ฟิลเตอร์วันที่ -->
-  <div class="filter-section">
+  <section class="filter-section">
+    <label>เลือกช่วงวันที่:</label>
     <input type="date" id="startDate">
     <input type="date" id="endDate">
     <button id="filterBtn">กรอง</button>
-  </div>
+  </section>
 
   <!-- สรุปยอดเงินกู้ -->
-  <div class="cards">
+  <section class="cards">
     <div class="card blue">
       <h4>ยอดเงินกู้รวม</h4>
       <p id="totalLoans">0 ฿</p>
@@ -31,15 +35,20 @@
       <h4>ยอดชำระแล้ว</h4>
       <p id="paidAmount">0 ฿</p>
     </div>
-  </div>
+  </section>
 
   <!-- กราฟ -->
-  <div class="chart-container">
-    <canvas id="loanChart"></canvas>
-  </div>
+  <section class="chart-section">
+    <h4>กราฟเงินกู้รายเดือน</h4>
+    <div class="chart-container">
+      <canvas id="loanChart"></canvas>
+    </div>
+  </section>
 
-  <!-- ปุ่มเปิด Modal เพิ่มเงินกู้ -->
-  <button id="openModalBtn">เพิ่มเงินกู้</button>
+  <!-- ปุ่มเพิ่มเงินกู้ -->
+  <section class="action-section">
+    <button id="openModalBtn">เพิ่มเงินกู้ใหม่</button>
+  </section>
 
   <!-- Modal เพิ่มเงินกู้ -->
   <div id="loanModal" class="modal">
