@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard เงินกู้</title>
+    <title>ระบบ Dashboard เงินกู้</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -13,72 +14,84 @@
 
 <div class="container">
     <header>
-        <h1>Dashboard ระบบเงินกู้</h1>
+        <h1>ระบบบริหารจัดการเงินกู้</h1>
     </header>
 
     <section class="filter-section">
-        <label>เลือกช่วงวันที่ปล่อยกู้:</label>
-        <input type="date" id="startDate">
-        <input type="date" id="endDate">
-        <button id="filterBtn" class="btn-primary">กรองข้อมูล</button>
-        <button id="resetBtn" class="btn-outline">ล้างค่า</button>
+        <div class="filter-group">
+            <label>จากวันที่:</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="filter-group">
+            <label>ถึงวันที่:</label>
+            <input type="date" id="endDate">
+        </div>
+        <div class="filter-actions">
+            <button id="filterBtn" class="btn-primary">กรองข้อมูล</button>
+            <button id="resetBtn" class="btn-outline">รีเซ็ต</button>
+        </div>
     </section>
 
     <section class="cards-grid">
         <div class="card blue">
-            <h4>ยอดเงินต้นที่ปล่อยรวม</h4>
+            <h4>ยอดปล่อยกู้รวม (เงินต้น)</h4>
             <p id="totalLoans">0 ฿</p>
         </div>
         <div class="card yellow">
-            <h4>ยอดรับชำระแล้ว (ต้น+ดอก)</h4>
+            <h4>ยอดชำระแล้ว (ต้น+ดอก)</h4>
             <p id="paidAmount">0 ฿</p>
         </div>
     </section>
 
     <section class="chart-section">
-        <h4>กราฟยอดการปล่อยกู้รายเดือน</h4>
+        <div class="chart-header">
+            <h4>สถิติการปล่อยกู้รายเดือน</h4>
+        </div>
         <div class="chart-container">
             <canvas id="loanChart"></canvas>
         </div>
     </section>
 
-    <section class="action-section">
-        <button id="openModalBtn" class="btn-add">+ เพิ่มข้อมูลการกู้ใหม่</button>
-    </section>
+    <div class="action-center">
+        <button id="openModalBtn" class="btn-add">+ เพิ่มรายการกู้ใหม่</button>
+    </div>
 
     <div id="loanModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>เพิ่มข้อมูลเงินกู้ใหม่</h2>
+            <h2>บันทึกข้อมูลการกู้</h2>
+            <hr>
             <form id="loanForm">
-                <div class="form-group">
-                    <label>ชื่อเล่น:</label>
-                    <input type="text" id="nickname" placeholder="เช่น บอย" required>
-                </div>
-                <div class="form-group">
-                    <label>ชื่อ-นามสกุล:</label>
-                    <input type="text" id="nameSurname" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ชื่อเล่น:</label>
+                        <input type="text" id="nickname" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ชื่อ-นามสกุล:</label>
+                        <input type="text" id="nameSurname" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>เลขบัตรประชาชน:</label>
                     <input type="text" id="idCard" maxlength="13">
                 </div>
                 <div class="form-row">
-                    <div>
+                    <div class="form-group">
                         <label>เบอร์โทรศัพท์:</label>
-                        <input type="text" id="telephone">
+                        <input type="tel" id="telephone">
                     </div>
-                    <div>
+                    <div class="form-group">
                         <label>วันที่ปล่อยกู้:</label>
                         <input type="date" id="loanDate" required>
                     </div>
                 </div>
                 <div class="form-row">
-                    <div>
+                    <div class="form-group">
                         <label>เงินต้น (บาท):</label>
                         <input type="number" id="principal" min="0" required>
                     </div>
-                    <div>
+                    <div class="form-group">
                         <label>ดอกเบี้ย (บาท):</label>
                         <input type="number" id="interest" min="0" value="0">
                     </div>
@@ -91,7 +104,7 @@
                         <option value="ค้างชำระ">ค้างชำระ</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-save">บันทึกข้อมูล</button>
+                <button type="submit" id="saveBtn" class="btn-save">บันทึกข้อมูล</button>
             </form>
         </div>
     </div>
