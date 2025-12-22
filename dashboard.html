@@ -1,38 +1,87 @@
-<!-- Modal เพิ่มเงินกู้ -->
-<div id="loanModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <h2>เพิ่มเงินกู้ใหม่</h2>
-    <form id="loanForm">
-      <label>Nickname:</label>
-      <input type="text" id="nickname" required>
-      <label>ชื่อ-สกุล:</label>
-      <input type="text" id="nameSurname" required>
-      <label>ID Card:</label>
-      <input type="text" id="idCard" required>
-      <label>Telephone:</label>
-      <input type="text" id="telephone">
-      <label>Birthday:</label>
-      <input type="date" id="birthday">
-      <label>Address:</label>
-      <input type="text" id="address">
-      <label>วันที่กู้:</label>
-      <input type="date" id="loanDate" required>
-      <label>วันที่คืน:</label>
-      <input type="date" id="returnDate">
-      <label>เงินต้น:</label>
-      <input type="number" id="principal" required>
-      <label>ประเภทดอก:</label>
-      <input type="text" id="interestType">
-      <label>ดอกเบี้ย:</label>
-      <input type="number" id="interest">
-      <label>สถานะ:</label>
-      <select id="status">
-        <option value="กำลังกู้">กำลังกู้</option>
-        <option value="คืนแล้ว">คืนแล้ว</option>
-        <option value="ค้างชำระ">ค้างชำระ</option>
-      </select>
-      <button type="submit">บันทึก</button>
-    </form>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard เงินกู้</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h2>Dashboard เงินกู้</h2>
+
+  <!-- ฟิลเตอร์วันที่ -->
+  <div class="filter-section">
+    <input type="date" id="startDate">
+    <input type="date" id="endDate">
+    <button id="filterBtn">กรอง</button>
   </div>
+
+  <!-- สรุปยอดเงินกู้ -->
+  <div class="cards">
+    <div class="card blue">
+      <h4>ยอดเงินกู้รวม</h4>
+      <p id="totalLoans">0 ฿</p>
+    </div>
+    <div class="card yellow">
+      <h4>ยอดชำระแล้ว</h4>
+      <p id="paidAmount">0 ฿</p>
+    </div>
+  </div>
+
+  <!-- กราฟ -->
+  <div class="chart-container">
+    <canvas id="loanChart"></canvas>
+  </div>
+
+  <!-- ปุ่มเปิด Modal เพิ่มเงินกู้ -->
+  <button id="openModalBtn">เพิ่มเงินกู้</button>
+
+  <!-- Modal เพิ่มเงินกู้ -->
+  <div id="loanModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>เพิ่มเงินกู้ใหม่</h2>
+      <form id="loanForm">
+        <label>Nickname:</label>
+        <input type="text" id="nickname" required>
+        <label>ชื่อ-สกุล:</label>
+        <input type="text" id="nameSurname" required>
+        <label>ID Card:</label>
+        <input type="text" id="idCard" required>
+        <label>Telephone:</label>
+        <input type="text" id="telephone">
+        <label>Birthday:</label>
+        <input type="date" id="birthday">
+        <label>Address:</label>
+        <input type="text" id="address">
+        <label>วันที่กู้:</label>
+        <input type="date" id="loanDate" required>
+        <label>วันที่คืน:</label>
+        <input type="date" id="returnDate">
+        <label>เงินต้น:</label>
+        <input type="number" id="principal" required>
+        <label>ประเภทดอก:</label>
+        <input type="text" id="interestType">
+        <label>ดอกเบี้ย:</label>
+        <input type="number" id="interest">
+        <label>สถานะ:</label>
+        <select id="status">
+          <option value="กำลังกู้">กำลังกู้</option>
+          <option value="คืนแล้ว">คืนแล้ว</option>
+          <option value="ค้างชำระ">ค้างชำระ</option>
+        </select>
+        <button type="submit">บันทึก</button>
+      </form>
+    </div>
+  </div>
+
 </div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
