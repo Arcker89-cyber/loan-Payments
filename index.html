@@ -1,41 +1,93 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>Loan Payment System | Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard เงินกู้</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-  <div class="login-container">
-    <h2>🔐 ระบบจัดการเงินกู้</h2>
+<div class="container">
 
-    <div class="form-group">
-      <label for="email">อีเมล</label>
-      <input type="email" id="email" placeholder="example@email.com" required>
+  <header>
+    <h1>Dashboard ระบบเงินกู้</h1>
+  </header>
+
+  <section class="filter-section">
+    <label>เลือกช่วงวันที่:</label>
+    <input type="date" id="startDate">
+    <input type="date" id="endDate">
+    <button id="filterBtn">กรอง</button>
+  </section>
+
+  <section class="cards-grid">
+    <div class="card blue">
+      <h4>ยอดเงินกู้รวม</h4>
+      <p id="totalLoans">0 ฿</p>
     </div>
-
-    <div class="form-group">
-      <label for="password">รหัสผ่าน</label>
-      <input type="password" id="password" placeholder="••••••••" required>
+    <div class="card yellow">
+      <h4>ยอดชำระแล้ว</h4>
+      <p id="paidAmount">0 ฿</p>
     </div>
+  </section>
 
-    <button onclick="login()">เข้าสู่ระบบ</button>
+  <section class="chart-section">
+    <h4>กราฟเงินกู้รายเดือน</h4>
+    <div class="chart-container">
+      <canvas id="loanChart"></canvas>
+    </div>
+  </section>
 
-    <p class="error" id="errorMsg"></p>
+  <section class="action-section">
+    <button id="openModalBtn">เพิ่มเงินกู้ใหม่</button>
+  </section>
+
+  <!-- Modal -->
+  <div id="loanModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>เพิ่มเงินกู้ใหม่</h2>
+      <form id="loanForm">
+        <!-- ฟอร์มเหมือนเดิม -->
+        <label>Nickname:</label>
+        <input type="text" id="nickname" required>
+        <label>ชื่อ-สกุล:</label>
+        <input type="text" id="nameSurname" required>
+        <label>ID Card:</label>
+        <input type="text" id="idCard" required>
+        <label>Telephone:</label>
+        <input type="text" id="telephone">
+        <label>Birthday:</label>
+        <input type="date" id="birthday">
+        <label>Address:</label>
+        <input type="text" id="address">
+        <label>วันที่กู้:</label>
+        <input type="date" id="loanDate" required>
+        <label>วันที่คืน:</label>
+        <input type="date" id="returnDate">
+        <label>เงินต้น:</label>
+        <input type="number" id="principal" required>
+        <label>ประเภทดอก:</label>
+        <input type="text" id="interestType">
+        <label>ดอกเบี้ย:</label>
+        <input type="number" id="interest">
+        <label>สถานะ:</label>
+        <select id="status">
+          <option value="กำลังกู้">กำลังกู้</option>
+          <option value="คืนแล้ว">คืนแล้ว</option>
+          <option value="ค้างชำระ">ค้างชำระ</option>
+        </select>
+        <button type="submit">บันทึก</button>
+      </form>
+    </div>
   </div>
 
-  <!-- ================= FIREBASE SDK (COMPAT) ================= -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</div>
 
-  <!-- ================= YOUR JS ================= -->
-  <script src="js/firebase.js"></script>
-  <script src="js/auth.js"></script>
-
+<script src="dashboard.js"></script>
 </body>
 </html>
