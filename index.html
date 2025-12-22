@@ -1,20 +1,28 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>Login | ระบบเงินกู้</title>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <title>Login | Loan System</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<h2>🔐 เข้าสู่ระบบ</h2>
+<h2>🔐 Login</h2>
 
 <input type="email" id="email" placeholder="Email">
 <input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
 
-<button onclick="login()">เข้าสู่ระบบ</button>
+<!-- ✅ 1. Firebase SDK (ต้องมาก่อน) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<!-- ✅ 2. Firebase config -->
 <script src="js/firebase.js"></script>
+
+<!-- ✅ 3. Auth logic -->
 <script src="js/auth.js"></script>
+
 </body>
 </html>
