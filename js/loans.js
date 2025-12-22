@@ -1,57 +1,77 @@
-
-// ===============================
-// loans.js
-// ===============================
-
-// 1️⃣ เช็กว่าไฟล์นี้ถูกโหลดจริง
 console.log("✅ loans.js loaded");
 
-// 2️⃣ ป้องกันการเข้า dashboard ถ้าไม่ได้ login
-firebase.auth().onAuthStateChanged((user) => {
-  if (!user) {
-    console.warn("⛔ Not logged in, redirect to login");
-    window.location.href = "index.html";
-  } else {
-    console.log("👤 Logged in as:", user.email);
-    loadLoans(); // เรียกโหลดข้อมูลเงินกู้
-  }
+// Firebase Firestore ref
+const db = firebase.firestore();
+const loanTable = document.getElementById("loanTable").getElementsByTagName('tbody')[0];
+
+// Modal
+const modal = document.getElementById("loanModal");
+const btnAddLoan = document.getElementById("addLoanBtn");
+const spanClose = document.querySelector(".close");
+const form = document.getElementById("loanForm");
+
+// เปิด Modal
+btnAddLoan.onclick = () => modal.style.display = "block";
+spanClose.onclick = () => modal.style.display = "none";
+window.onclick = (event) => { if(event.target == modal) modal.style.display = "none"; }
+
+// แสดงข้อมูลเงินกู้จาก Firestore
+function loadLoans() {
+  loanTable.innerHTML = "";
+  db.collection("loans").orderBy("loanDate", "desc").get()
+    .then(snapshot => {
+      let i = 1;
+      snapshot.forEach(doc => {
+        const loan = doc.data();
+        const row = loanTable.insertRow();
+        row.innerHTML = `
+          <td>${i++}</td>
+          <td>${loan.nickname}</td>
+          <td>${loan.principal}</td>
+          <td>${loan.interest}</td>
+          <td>${loan.status}</td>
+        `;
+      });
+    })
+    .catch(err => console.error(err));
+}
+
+// เพิ่มเงินกู้ใหม่
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  
+  const newLoan = {
+    nickname: document.getElementById("nickname").value,
+    nameSurname: document.getElementById("nameSurname").value,
+    idCard: document.getElementById("idCard").value,
+    telephone: document.getElementById("telephone").value,
+    birthday: document.getElementById("birthday").value,
+    address: document.getElementById("address").value,
+    loanDate: document.getElementById("loanDate").value,
+    returnDate: document.getElementById("returnDate").value,
+    principal: Number(document.getElementById("principal").value),
+    interestType: document.getElementById("interestType").value,
+    interest: Number(document.getElementById("interest").value),
+    status: document.getElementById("status").value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection("loans").add(newLoan)
+    .then(() => {
+      console.log("💾 เพิ่มเงินกู้เรียบร้อย");
+      form.reset();
+      modal.style.display = "none";
+      loadLoans();
+    })
+    .catch(err => console.error(err));
 });
 
-// 3️⃣ ฟังก์ชันออกจากระบบ
-function logout() {
-  firebase.auth().signOut().then(() => {
-    window.location.href = "index.html";
-  });
-}
-
-// 4️⃣ โหลดข้อมูลเงินกู้ (ทดสอบก่อน)
-function loadLoans() {
-  const container = document.getElementById("loanList");
-  if (!container) return;
-
-  container.innerHTML = `
-    <p>📄 กำลังโหลดข้อมูลเงินกู้...</p>
-  `;
-
-  // 🔹 ทดสอบด้วยข้อมูลจำลองก่อน
-  setTimeout(() => {
-    container.innerHTML = `
-      <table border="1" cellpadding="6">
-        <tr>
-          <th>No.</th>
-          <th>ชื่อเล่น</th>
-          <th>เงินต้น</th>
-          <th>ดอกเบี้ย</th>
-          <th>สถานะ</th>
-        </tr>
-        <tr>
-          <td>1</td>
-          <td>สมชาย</td>
-          <td>10,000</td>
-          <td>500</td>
-          <td>กำลังกู้</td>
-        </tr>
-      </table>
-    `;
-  }, 500);
-}
+// โหลดตอนเริ่ม
+firebase.auth().onAuthStateChanged(user => {
+  if(user) {
+    console.log("👤 Logged in as:", user.email);
+    loadLoans();
+  } else {
+    window.location = "index.html"; // รีไดเรคไปหน้า login
+  }
+});
