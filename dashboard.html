@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard | ระบบเงินกู้</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<h2>📋 ข้อมูลเงินกู้</h2>
+<button onclick="logout()">ออกจากระบบ</button>
+<button onclick="openForm()">➕ เพิ่มข้อมูล</button>
+
+<table>
+<thead>
+<tr>
+<th>No.</th>
+<th>ชื่อ</th>
+<th>เงินต้น</th>
+<th>ดอก (%)</th>
+<th>สถานะ</th>
+</tr>
+</thead>
+<tbody id="loanTable"></tbody>
+</table>
+
+<script src="js/firebase.js"></script>
+<script src="js/loans.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>
