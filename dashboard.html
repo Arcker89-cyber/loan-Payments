@@ -1,96 +1,153 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard เงินกู้</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-</head>
-<body>
+// --- 1. Firebase Configuration (เปลี่ยนเป็นของคุณ) ---
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
 
-<div class="container">
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 
-  <header>
-    <h1>Dashboard ระบบเงินกู้</h1>
-  </header>
+// Variables
+let loanChart;
+const loanModal = document.getElementById("loanModal");
+const openModalBtn = document.getElementById("openModalBtn");
+const closeModal = document.querySelector(".close");
+const loanForm = document.getElementById("loanForm");
 
-  <!-- ฟิลเตอร์วันที่ -->
-  <section class="filter-section">
-    <label>เลือกช่วงวันที่:</label>
-    <input type="date" id="startDate">
-    <input type="date" id="endDate">
-    <button id="filterBtn">กรอง</button>
-  </section>
+// --- 2. Modal Controls ---
+openModalBtn.onclick = () => loanModal.style.display = "block";
+closeModal.onclick = () => loanModal.style.display = "none";
+window.onclick = (e) => { if (e.target == loanModal) loanModal.style.display = "none"; };
 
-  <!-- สรุปยอดเงินกู้ -->
-  <section class="cards">
-    <div class="card blue">
-      <h4>ยอดเงินกู้รวม</h4>
-      <p id="totalLoans">0 ฿</p>
-    </div>
-    <div class="card yellow">
-      <h4>ยอดชำระแล้ว</h4>
-      <p id="paidAmount">0 ฿</p>
-    </div>
-  </section>
+// --- 3. ดึงข้อมูลและอัปเดต Dashboard ---
+async function loadDashboardData(startDate = null, endDate = null) {
+    let query = db.collection("loans");
 
-  <!-- กราฟ -->
-  <section class="chart-section">
-    <h4>กราฟเงินกู้รายเดือน</h4>
-    <div class="chart-container">
-      <canvas id="loanChart"></canvas>
-    </div>
-  </section>
+    if (startDate && endDate) {
+        query = query.where("loanDate", ">=", startDate).where("loanDate", "<=", endDate);
+    }
 
-  <!-- ปุ่มเพิ่มเงินกู้ -->
-  <section class="action-section">
-    <button id="openModalBtn">เพิ่มเงินกู้ใหม่</button>
-  </section>
+    try {
+        const snapshot = await query.orderBy("loanDate", "asc").get();
+        let totalPrincipal = 0;
+        let totalPaid = 0;
+        let monthlyStats = {};
 
-  <!-- Modal เพิ่มเงินกู้ -->
-  <div id="loanModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>เพิ่มเงินกู้ใหม่</h2>
-      <form id="loanForm">
-        <label>Nickname:</label>
-        <input type="text" id="nickname" required>
-        <label>ชื่อ-สกุล:</label>
-        <input type="text" id="nameSurname" required>
-        <label>ID Card:</label>
-        <input type="text" id="idCard" required>
-        <label>Telephone:</label>
-        <input type="text" id="telephone">
-        <label>Birthday:</label>
-        <input type="date" id="birthday">
-        <label>Address:</label>
-        <input type="text" id="address">
-        <label>วันที่กู้:</label>
-        <input type="date" id="loanDate" required>
-        <label>วันที่คืน:</label>
-        <input type="date" id="returnDate">
-        <label>เงินต้น:</label>
-        <input type="number" id="principal" required>
-        <label>ประเภทดอก:</label>
-        <input type="text" id="interestType">
-        <label>ดอกเบี้ย:</label>
-        <input type="number" id="interest">
-        <label>สถานะ:</label>
-        <select id="status">
-          <option value="กำลังกู้">กำลังกู้</option>
-          <option value="คืนแล้ว">คืนแล้ว</option>
-          <option value="ค้างชำระ">ค้างชำระ</option>
-        </select>
-        <button type="submit">บันทึก</button>
-      </form>
-    </div>
-  </div>
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const principal = parseFloat(data.principal) || 0;
+            const interest = parseFloat(data.interest) || 0;
 
-</div>
+            // 1. คำนวณเงินต้นรวมทั้งหมดที่มีในระบบ (ตาม Filter)
+            totalPrincipal += principal;
 
-<script src="dashboard.js"></script>
-</body>
-</html>
+            // 2. คำนวณยอดที่ปิดยอดไปแล้ว (ต้น + ดอก)
+            if (data.status === "คืนแล้ว") {
+                totalPaid += (principal + interest);
+            }
+
+            // 3. เตรียมข้อมูลกราฟ (รายเดือน)
+            const month = data.loanDate.substring(0, 7); // เก็บค่า YYYY-MM
+            monthlyStats[month] = (monthlyStats[month] || 0) + principal;
+        });
+
+        // อัปเดต UI
+        document.getElementById("totalLoans").innerText = totalPrincipal.toLocaleString() + " ฿";
+        document.getElementById("paidAmount").innerText = totalPaid.toLocaleString() + " ฿";
+
+        renderChart(monthlyStats);
+
+    } catch (error) {
+        console.error("Error loading data: ", error);
+    }
+}
+
+// --- 4. ฟังก์ชันจัดการกราฟ ---
+function renderChart(monthlyData) {
+    const ctx = document.getElementById('loanChart').getContext('2d');
+    
+    if (loanChart) loanChart.destroy();
+
+    loanChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(monthlyData),
+            datasets: [{
+                label: 'ยอดปล่อยกู้ (เงินต้น)',
+                data: Object.values(monthlyData),
+                backgroundColor: '#007bff',
+                borderColor: '#0056b3',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+// --- 5. บันทึกข้อมูลใหม่ ---
+loanForm.onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const submitBtn = loanForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerText = "กำลังบันทึก...";
+
+    const formData = {
+        nickname: document.getElementById("nickname").value,
+        nameSurname: document.getElementById("nameSurname").value,
+        idCard: document.getElementById("idCard").value,
+        telephone: document.getElementById("telephone").value,
+        loanDate: document.getElementById("loanDate").value,
+        principal: parseFloat(document.getElementById("principal").value),
+        interest: parseFloat(document.getElementById("interest").value || 0),
+        status: document.getElementById("status").value,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        await db.collection("loans").add(formData);
+        alert("บันทึกข้อมูลเรียบร้อย!");
+        loanForm.reset();
+        loanModal.style.display = "none";
+        loadDashboardData(); // Refresh ข้อมูล
+    } catch (error) {
+        alert("เกิดข้อผิดพลาด: " + error.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "บันทึกข้อมูล";
+    }
+};
+
+// --- 6. ระบบ Filter ---
+document.getElementById("filterBtn").onclick = () => {
+    const start = document.getElementById("startDate").value;
+    const end = document.getElementById("endDate").value;
+    if (start && end) {
+        loadDashboardData(start, end);
+    } else {
+        alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด");
+    }
+};
+
+document.getElementById("resetBtn").onclick = () => {
+    document.getElementById("startDate").value = "";
+    document.getElementById("endDate").value = "";
+    loadDashboardData();
+};
+
+// โหลดข้อมูลครั้งแรกเมื่อเปิดหน้า
+window.onload = loadDashboardData;
