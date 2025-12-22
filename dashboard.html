@@ -1,31 +1,28 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>Dashboard | ระบบเงินกู้</title>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <title>Dashboard | Loan System</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<h2>📋 ข้อมูลเงินกู้</h2>
+<h2>📊 Dashboard ระบบเงินกู้</h2>
+
 <button onclick="logout()">ออกจากระบบ</button>
-<button onclick="openForm()">➕ เพิ่มข้อมูล</button>
 
-<table>
-<thead>
-<tr>
-<th>No.</th>
-<th>ชื่อ</th>
-<th>เงินต้น</th>
-<th>ดอก (%)</th>
-<th>สถานะ</th>
-</tr>
-</thead>
-<tbody id="loanTable"></tbody>
-</table>
+<div id="loanList"></div>
 
+<!-- 🔥 Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- 🔥 Firebase config -->
 <script src="js/firebase.js"></script>
+
+<!-- 🔥 Dashboard logic -->
 <script src="js/loans.js"></script>
-<script src="js/auth.js"></script>
+
 </body>
 </html>
