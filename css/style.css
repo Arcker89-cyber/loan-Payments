@@ -209,9 +209,10 @@ table tr:hover { background: #f8f9fa; }
     white-space: nowrap;
 }
 
-.status-badge.active { background: #fff3cd; color: #856404; }
-.status-badge.paid { background: #d4edda; color: #155724; }
-.status-badge.overdue { background: #f8d7da; color: #721c24; }
+.status-badge.active, .status-badge.status-active { background: #fff3cd; color: #856404; }
+.status-badge.paid, .status-badge.status-paid { background: #d4edda; color: #155724; }
+.status-badge.overdue, .status-badge.status-overdue { background: #f8d7da; color: #721c24; }
+.status-badge.pending, .status-badge.status-pending { background: #cce5ff; color: #004085; }
 
 /* Action Buttons */
 .btn-action {
@@ -349,6 +350,9 @@ button { cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; fo
 .btn-save { background: #28a745; color: white; width: 100%; padding: 12px; font-size: 1.1rem; margin-top: 10px; }
 .btn-save:hover { background: #1e7e34; }
 .btn-save:disabled { background: #ccc; cursor: not-allowed; }
+.btn-success { background: #28a745; color: white; padding: 10px 20px; font-size: 1rem; }
+.btn-success:hover { background: #1e7e34; }
+.btn-success:disabled { background: #ccc; cursor: not-allowed; }
 
 /* Customer Page */
 .customer-cards {
