@@ -609,6 +609,345 @@ function escapeCSV(str) {
     return str;
 }
 
+// ============ IMPORT LOAN ============
+let loanImportData = [];
+
+function openImportLoanModal() {
+    const modal = document.getElementById("importLoanModal");
+    if (modal) {
+        modal.style.display = "block";
+        resetLoanImportModal();
+        setupLoanDragDrop();
+    }
+}
+
+function closeImportLoanModal() {
+    const modal = document.getElementById("importLoanModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+    resetLoanImportModal();
+}
+
+function resetLoanImportModal() {
+    const fileInput = document.getElementById("loanFileInput");
+    const stats = document.getElementById("loanImportStats");
+    const preview = document.getElementById("loanImportPreview");
+    const progress = document.getElementById("loanImportProgress");
+    const log = document.getElementById("loanImportLog");
+    const startBtn = document.getElementById("startLoanImportBtn");
+    const dropZone = document.getElementById("loanDropZone");
+    
+    if (fileInput) fileInput.value = "";
+    if (stats) stats.style.display = "none";
+    if (preview) preview.style.display = "none";
+    if (progress) progress.style.display = "none";
+    if (log) {
+        log.style.display = "none";
+        log.innerHTML = "";
+    }
+    if (startBtn) startBtn.style.display = "none";
+    if (dropZone) dropZone.style.display = "block";
+    
+    loanImportData = [];
+}
+
+function setupLoanDragDrop() {
+    const dropZone = document.getElementById("loanDropZone");
+    if (!dropZone) return;
+    
+    dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    };
+    
+    dropZone.ondragleave = () => {
+        dropZone.classList.remove("dragover");
+    };
+    
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) processLoanFile(file);
+    };
+}
+
+function handleLoanFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) processLoanFile(file);
+}
+
+function processLoanFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+        alert("❌ กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น");
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            parseLoanImportData(jsonData);
+        } catch (error) {
+            console.error("Error parsing file:", error);
+            alert("❌ ไม่สามารถอ่านไฟล์ได้: " + error.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseLoanImportData(jsonData) {
+    loanImportData = [];
+    let validCount = 0;
+    let invalidCount = 0;
+    
+    // Column mapping - รองรับทั้งภาษาไทยและอังกฤษ
+    const columnMap = {
+        nickname: ['Nickname', 'nickname', 'ชื่อเล่น'],
+        nameSurname: ['Name-Surname', 'nameSurname', 'ชื่อ-นามสกุล', 'ชื่อนามสกุล'],
+        loanDate: ['วันที่กู้', 'loanDate', 'LoanDate'],
+        returnDate: ['วันที่คืน', 'returnDate', 'ReturnDate'],
+        principal: ['เงินต้น', 'principal', 'Principal'],
+        interestType: ['ประเภทดอกเบี้ย', 'interestType', 'InterestType'],
+        interest: ['ดอกเบี้ย', 'interest', 'Interest'],
+        status: ['สถานะ', 'status', 'Status'],
+        summary: ['สรุป', 'summary', 'Summary'],
+        documents: ['เอกสาร', 'documents', 'Documents']
+    };
+    
+    function getValue(row, keys) {
+        for (const key of keys) {
+            if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+                return String(row[key]).trim();
+            }
+        }
+        return '';
+    }
+    
+    function parseNumber(val) {
+        if (!val) return 0;
+        const num = parseFloat(String(val).replace(/,/g, ''));
+        return isNaN(num) ? 0 : num;
+    }
+    
+    function parseDate(val) {
+        if (!val) return '';
+        
+        // ถ้าเป็น Excel serial date
+        if (typeof val === 'number') {
+            const date = new Date((val - 25569) * 86400 * 1000);
+            return date.toISOString().split('T')[0];
+        }
+        
+        val = String(val).trim();
+        
+        // รูปแบบ YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+            return val;
+        }
+        
+        // รูปแบบ DD/MM/YYYY หรือ DD-MM-YYYY
+        const parts = val.split(/[\/\-]/);
+        if (parts.length === 3) {
+            let [day, month, year] = parts;
+            year = parseInt(year);
+            if (year > 2500) year -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+            if (year < 100) year += 2000; // แปลง 2 หลักเป็น 4 หลัก
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        
+        return '';
+    }
+    
+    jsonData.forEach((row) => {
+        const nickname = getValue(row, columnMap.nickname);
+        const loanDate = parseDate(getValue(row, columnMap.loanDate));
+        const principal = parseNumber(getValue(row, columnMap.principal));
+        
+        // ต้องมี nickname, loanDate และ principal
+        const isValid = nickname && loanDate && principal > 0;
+        
+        if (isValid) {
+            validCount++;
+        } else {
+            invalidCount++;
+        }
+        
+        loanImportData.push({
+            nickname: nickname,
+            nameSurname: getValue(row, columnMap.nameSurname),
+            loanDate: loanDate,
+            returnDate: parseDate(getValue(row, columnMap.returnDate)),
+            principal: principal,
+            interestType: getValue(row, columnMap.interestType) || 'รายเดือน',
+            interest: parseNumber(getValue(row, columnMap.interest)),
+            status: getValue(row, columnMap.status) || 'กำลังผ่อน',
+            summary: getValue(row, columnMap.summary),
+            documents: getValue(row, columnMap.documents),
+            isValid: isValid
+        });
+    });
+    
+    // Update stats
+    document.getElementById("loanStatTotal").textContent = loanImportData.length;
+    document.getElementById("loanStatValid").textContent = validCount;
+    document.getElementById("loanStatInvalid").textContent = invalidCount;
+    document.getElementById("loanImportStats").style.display = "grid";
+    
+    // Render preview
+    renderLoanImportPreview();
+    
+    // Show import button if there's valid data
+    if (validCount > 0) {
+        document.getElementById("startLoanImportBtn").style.display = "inline-block";
+    }
+    
+    document.getElementById("loanDropZone").style.display = "none";
+}
+
+function renderLoanImportPreview() {
+    const tbody = document.getElementById("loanPreviewTableBody");
+    tbody.innerHTML = "";
+    
+    loanImportData.slice(0, 50).forEach((item) => {
+        const row = document.createElement("tr");
+        row.style.opacity = item.isValid ? "1" : "0.5";
+        row.innerHTML = `
+            <td>${item.isValid ? '✅' : '⚠️'}</td>
+            <td>${item.nickname || '-'}</td>
+            <td>${item.nameSurname || '-'}</td>
+            <td>${item.loanDate || '-'}</td>
+            <td>${item.principal.toLocaleString()}</td>
+            <td>${item.interest.toLocaleString()}</td>
+            <td>${item.status}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (loanImportData.length > 50) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td colspan="7" style="text-align:center;color:#999;">... และอีก ${loanImportData.length - 50} รายการ</td>`;
+        tbody.appendChild(row);
+    }
+    
+    document.getElementById("loanImportPreview").style.display = "block";
+}
+
+async function startLoanImport() {
+    const validItems = loanImportData.filter(item => item.isValid);
+    if (validItems.length === 0) {
+        alert("❌ ไม่มีข้อมูลที่ถูกต้องให้ Import");
+        return;
+    }
+    
+    if (!confirm(`ยืนยันการ Import ข้อมูลเงินกู้ ${validItems.length} รายการ?`)) return;
+    
+    const startBtn = document.getElementById("startLoanImportBtn");
+    startBtn.disabled = true;
+    startBtn.textContent = "กำลัง Import...";
+    document.getElementById("loanImportProgress").style.display = "block";
+    document.getElementById("loanImportLog").style.display = "block";
+    
+    let success = 0;
+    let failed = 0;
+    
+    for (let i = 0; i < validItems.length; i++) {
+        const item = validItems[i];
+        
+        try {
+            // ค้นหา customerId จาก nickname (ถ้ามี)
+            let customerId = '';
+            const customerMatch = allCustomers.find(c => 
+                c.nickname && c.nickname.toLowerCase() === item.nickname.toLowerCase()
+            );
+            if (customerMatch) {
+                customerId = customerMatch.id;
+            }
+            
+            await db.collection("loans").add({
+                customerId: customerId,
+                nickname: item.nickname,
+                nameSurname: item.nameSurname,
+                loanDate: item.loanDate,
+                returnDate: item.returnDate,
+                principal: item.principal,
+                interestType: item.interestType,
+                interest: item.interest,
+                status: item.status,
+                summary: item.summary,
+                documents: item.documents,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            success++;
+            logLoanImport(`✅ ${item.nickname} - ${item.loanDate} - ${item.principal.toLocaleString()} บาท`, 'success');
+            
+        } catch (error) {
+            failed++;
+            logLoanImport(`❌ ${item.nickname} - ${error.message}`, 'error');
+        }
+        
+        // Update progress
+        const percent = Math.round(((i + 1) / validItems.length) * 100);
+        document.getElementById("loanProgressFill").style.width = percent + '%';
+        document.getElementById("loanProgressFill").textContent = percent + '%';
+        
+        await new Promise(r => setTimeout(r, 50));
+    }
+    
+    logLoanImport(``, '');
+    logLoanImport(`🎉 Import เสร็จสิ้น! สำเร็จ ${success} รายการ, ผิดพลาด ${failed} รายการ`, 'success');
+    
+    startBtn.textContent = "✅ Import เสร็จสิ้น";
+    
+    // Reload data
+    setTimeout(() => {
+        loadDashboardData();
+    }, 1000);
+}
+
+function logLoanImport(message, type) {
+    const log = document.getElementById("loanImportLog");
+    const div = document.createElement("div");
+    div.className = type;
+    div.textContent = message;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+function downloadLoanTemplate() {
+    const headers = [
+        "No.", "Nickname", "Name-Surname", "วันที่กู้", "วันที่คืน",
+        "เงินต้น", "ประเภทดอกเบี้ย", "ดอกเบี้ย", "ต้น+ดอก", "สถานะ", "สรุป", "เอกสาร"
+    ];
+    const sample = [
+        "1", "ตัวอย่าง", "นายตัวอย่าง ทดสอบ", "2024-01-15", "2024-02-15",
+        "10000", "รายเดือน", "500", "10500", "กำลังผ่อน", "หมายเหตุ", ""
+    ];
+    
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + sample.join(',');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'loan_template.csv';
+    link.click();
+}
+
+// Handle modal click outside
+window.addEventListener('click', function(e) {
+    const importModal = document.getElementById("importLoanModal");
+    if (e.target === importModal) {
+        closeImportLoanModal();
+    }
+});
+
 // ============ AUTH CHECK ============
 firebase.auth().onAuthStateChanged(user => {
     if (user) {
