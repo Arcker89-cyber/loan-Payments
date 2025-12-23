@@ -3,12 +3,50 @@ console.log("✅ customers.js loaded");
 
 let allCustomers = [];
 let editingId = null;
-let importData = []; // ข้อมูลที่จะ import
+let importData = [];
 
-const customerModal = document.getElementById("customerModal");
-const customerForm = document.getElementById("customerForm");
-const customerTableBody = document.getElementById("customerTableBody");
-const importModal = document.getElementById("importModal");
+// DOM Elements - จะถูก assign หลัง DOM ready
+let customerModal, customerForm, customerTableBody, importModal;
+
+// ============ INITIALIZE ============
+document.addEventListener('DOMContentLoaded', function() {
+    customerModal = document.getElementById("customerModal");
+    customerForm = document.getElementById("customerForm");
+    customerTableBody = document.getElementById("customerTableBody");
+    importModal = document.getElementById("importModal");
+    
+    // Setup form submit
+    if (customerForm) {
+        customerForm.addEventListener("submit", handleCustomerSubmit);
+    }
+    
+    // Setup drag & drop
+    setupDragDrop();
+    
+    console.log("✅ DOM ready, elements initialized");
+});
+
+// ============ DRAG & DROP SETUP ============
+function setupDragDrop() {
+    const dropZone = document.getElementById("dropZone");
+    if (!dropZone) return;
+    
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) processFile(file);
+    });
+}
 
 // ============ THAI ALPHABET SORT ============
 function sortThaiAlphabet(a, b) {
@@ -19,65 +57,71 @@ function sortThaiAlphabet(a, b) {
 
 // ============ CUSTOMER MODAL ============
 function openCustomerModal() {
-    customerModal.style.display = "block";
+    const modal = document.getElementById("customerModal");
+    modal.style.display = "block";
     document.getElementById("customerModalTitle").textContent = "เพิ่มลูกค้าใหม่";
     document.getElementById("duplicateWarning").style.display = "none";
-    customerForm.reset();
+    document.getElementById("customerForm").reset();
     editingId = null;
 }
 
 function closeCustomerModal() {
-    customerModal.style.display = "none";
-    customerForm.reset();
+    const modal = document.getElementById("customerModal");
+    modal.style.display = "none";
+    document.getElementById("customerForm").reset();
     editingId = null;
 }
 
 // ============ IMPORT MODAL ============
 function openImportModal() {
-    importModal.style.display = "block";
+    const modal = document.getElementById("importModal");
+    if (!modal) {
+        console.error("Import modal not found!");
+        return;
+    }
+    modal.style.display = "block";
     resetImportModal();
 }
 
 function closeImportModal() {
-    importModal.style.display = "none";
+    const modal = document.getElementById("importModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
     resetImportModal();
 }
 
 function resetImportModal() {
-    document.getElementById("fileInput").value = "";
-    document.getElementById("importStats").style.display = "none";
-    document.getElementById("importPreview").style.display = "none";
-    document.getElementById("importProgress").style.display = "none";
-    document.getElementById("importLog").style.display = "none";
-    document.getElementById("importLog").innerHTML = "";
-    document.getElementById("startImportBtn").style.display = "none";
-    document.getElementById("dropZone").style.display = "block";
+    const fileInput = document.getElementById("fileInput");
+    const importStats = document.getElementById("importStats");
+    const importPreview = document.getElementById("importPreview");
+    const importProgress = document.getElementById("importProgress");
+    const importLog = document.getElementById("importLog");
+    const startImportBtn = document.getElementById("startImportBtn");
+    const dropZone = document.getElementById("dropZone");
+    
+    if (fileInput) fileInput.value = "";
+    if (importStats) importStats.style.display = "none";
+    if (importPreview) importPreview.style.display = "none";
+    if (importProgress) importProgress.style.display = "none";
+    if (importLog) {
+        importLog.style.display = "none";
+        importLog.innerHTML = "";
+    }
+    if (startImportBtn) startImportBtn.style.display = "none";
+    if (dropZone) dropZone.style.display = "block";
+    
     importData = [];
 }
 
-window.onclick = (e) => {
-    if (e.target === customerModal) closeCustomerModal();
-    if (e.target === importModal) closeImportModal();
+// ============ WINDOW CLICK HANDLER ============
+window.onclick = function(e) {
+    const custModal = document.getElementById("customerModal");
+    const impModal = document.getElementById("importModal");
+    
+    if (e.target === custModal) closeCustomerModal();
+    if (e.target === impModal) closeImportModal();
 };
-
-// ============ DRAG & DROP ============
-const dropZone = document.getElementById("dropZone");
-
-dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-});
-
-dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-});
-
-dropZone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-});
 
 // ============ FILE HANDLING ============
 function handleFileSelect(event) {
@@ -86,12 +130,6 @@ function handleFileSelect(event) {
 }
 
 function processFile(file) {
-    const validTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel',
-        'text/csv'
-    ];
-    
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(ext)) {
         alert("❌ กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น");
@@ -122,7 +160,6 @@ function parseImportData(jsonData) {
     let duplicateCount = 0;
     let newCount = 0;
     
-    // Map column names
     const columnMap = {
         nickname: ['nickname', 'ชื่อเล่น', 'Nickname'],
         nameSurname: ['Name - Surname', 'ชื่อ-นามสกุล', 'nameSurname', 'ชื่อนามสกุล', 'name'],
@@ -141,17 +178,14 @@ function parseImportData(jsonData) {
         return '';
     }
     
-    // Get existing nicknames
     const existingNicknames = new Set(allCustomers.map(c => (c.nickname || '').toLowerCase()));
     const importedNicknames = new Set();
     
-    jsonData.forEach((row, index) => {
+    jsonData.forEach((row) => {
         const nickname = getValue(row, columnMap.nickname);
-        if (!nickname) return; // ข้ามถ้าไม่มีชื่อเล่น
+        if (!nickname) return;
         
         const nicknameLower = nickname.toLowerCase();
-        
-        // เช็คซ้ำกับข้อมูลในระบบ และ ข้อมูลที่กำลังจะ import
         const isDuplicate = existingNicknames.has(nicknameLower) || importedNicknames.has(nicknameLower);
         
         if (isDuplicate) {
@@ -161,7 +195,6 @@ function parseImportData(jsonData) {
             importedNicknames.add(nicknameLower);
         }
         
-        // แปลงวันที่
         let birthday = getValue(row, columnMap.birthday);
         if (birthday && birthday.includes('/')) {
             const parts = birthday.split('/');
@@ -173,14 +206,12 @@ function parseImportData(jsonData) {
             }
         }
         
-        // แปลงเบอร์โทร
         let telephone = getValue(row, columnMap.telephone);
         if (telephone) {
             telephone = String(telephone).replace(/\D/g, '');
             if (telephone.length === 9) telephone = '0' + telephone;
         }
         
-        // แปลง ID Card
         let idCard = getValue(row, columnMap.idCard);
         if (idCard) {
             idCard = String(idCard).replace(/\D/g, '');
@@ -201,16 +232,13 @@ function parseImportData(jsonData) {
         });
     });
     
-    // Update stats
     document.getElementById("statTotal").textContent = importData.length;
     document.getElementById("statNew").textContent = newCount;
     document.getElementById("statDuplicate").textContent = duplicateCount;
     document.getElementById("importStats").style.display = "grid";
     
-    // Render preview
     renderImportPreview();
     
-    // Show import button if there's new data
     if (newCount > 0) {
         document.getElementById("startImportBtn").style.display = "inline-block";
     }
@@ -223,7 +251,7 @@ function renderImportPreview() {
     const tbody = document.getElementById("previewTableBody");
     tbody.innerHTML = "";
     
-    importData.slice(0, 50).forEach((item, index) => {
+    importData.slice(0, 50).forEach((item) => {
         const row = document.createElement("tr");
         row.style.opacity = item.isDuplicate ? "0.5" : "1";
         row.innerHTML = `
@@ -255,8 +283,9 @@ async function startImport() {
     
     if (!confirm(`ยืนยันการ Import ข้อมูล ${newItems.length} รายการ?`)) return;
     
-    document.getElementById("startImportBtn").disabled = true;
-    document.getElementById("startImportBtn").textContent = "กำลัง Import...";
+    const startBtn = document.getElementById("startImportBtn");
+    startBtn.disabled = true;
+    startBtn.textContent = "กำลัง Import...";
     document.getElementById("importProgress").style.display = "block";
     document.getElementById("importLog").style.display = "block";
     
@@ -286,21 +315,18 @@ async function startImport() {
             logImport(`❌ ${item.nickname} - ${error.message}`, 'error');
         }
         
-        // Update progress
         const percent = Math.round(((i + 1) / newItems.length) * 100);
         document.getElementById("progressFill").style.width = percent + '%';
         document.getElementById("progressFill").textContent = percent + '%';
         
-        // Small delay
         await new Promise(r => setTimeout(r, 50));
     }
     
     logImport(``, '');
     logImport(`🎉 Import เสร็จสิ้น! สำเร็จ ${success} รายการ, ผิดพลาด ${failed} รายการ`, 'success');
     
-    document.getElementById("startImportBtn").textContent = "✅ Import เสร็จสิ้น";
+    startBtn.textContent = "✅ Import เสร็จสิ้น";
     
-    // Reload customer list
     setTimeout(() => {
         loadCustomerList();
     }, 1000);
@@ -379,10 +405,11 @@ async function loadCustomerList() {
 
 // ============ RENDER TABLE ============
 function renderCustomerTable(customers) {
-    customerTableBody.innerHTML = "";
+    const tbody = document.getElementById("customerTableBody");
+    tbody.innerHTML = "";
     
     if (customers.length === 0) {
-        customerTableBody.innerHTML = `
+        tbody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align: center; padding: 30px; color: #999;">
                     ยังไม่มีข้อมูลลูกค้า
@@ -408,7 +435,7 @@ function renderCustomerTable(customers) {
                 <button class="btn-action btn-delete" onclick="deleteCustomer('${customer.id}')" title="ลบ">🗑️</button>
             </td>
         `;
-        customerTableBody.appendChild(row);
+        tbody.appendChild(row);
     });
 }
 
@@ -496,8 +523,8 @@ async function viewCustomerHistory(customerId) {
     }
 }
 
-// ============ CRUD ============
-customerForm.addEventListener("submit", async (e) => {
+// ============ FORM SUBMIT HANDLER ============
+async function handleCustomerSubmit(e) {
     e.preventDefault();
     
     if (checkDuplicate()) {
@@ -524,7 +551,6 @@ customerForm.addEventListener("submit", async (e) => {
             await db.collection("customers").doc(editingId).update(customerData);
             alert("✅ อัปเดตข้อมูลลูกค้าเรียบร้อยแล้ว!");
         } else {
-            // Double check duplicate
             const existing = await db.collection("customers").where("nickname", "==", customerData.nickname).get();
             if (!existing.empty) {
                 alert("❌ ชื่อเล่นนี้มีอยู่ในระบบแล้ว");
@@ -547,8 +573,9 @@ customerForm.addEventListener("submit", async (e) => {
         saveBtn.disabled = false;
         saveBtn.textContent = "💾 บันทึกข้อมูล";
     }
-});
+}
 
+// ============ EDIT CUSTOMER ============
 function editCustomer(id) {
     const customer = allCustomers.find(c => c.id === id);
     if (!customer) return;
@@ -564,9 +591,10 @@ function editCustomer(id) {
     document.getElementById("customerModalTitle").textContent = "แก้ไขข้อมูลลูกค้า";
     document.getElementById("duplicateWarning").style.display = "none";
     document.getElementById("customerSaveBtn").disabled = false;
-    customerModal.style.display = "block";
+    document.getElementById("customerModal").style.display = "block";
 }
 
+// ============ DELETE CUSTOMER ============
 async function deleteCustomer(id) {
     const customer = allCustomers.find(c => c.id === id);
     if (!customer) return;
