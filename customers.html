@@ -6,6 +6,8 @@
     <title>ระบบจัดการเงินกู้ | จัดการลูกค้า</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .table-customers {
             width: 100%;
@@ -26,9 +28,6 @@
         }
         .table-customers tr:hover {
             background: #f0f7ff;
-        }
-        .table-customers .actions {
-            white-space: nowrap;
         }
         .id-card-masked {
             font-family: monospace;
@@ -52,6 +51,111 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+        
+        /* Import Modal Styles */
+        .import-zone {
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .import-zone:hover, .import-zone.dragover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+        .import-zone h3 { color: #666; margin: 10px 0 5px; }
+        .import-zone p { color: #999; font-size: 0.9rem; }
+        .import-zone input[type="file"] { display: none; }
+        
+        .import-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .import-preview table {
+            width: 100%;
+            font-size: 0.85rem;
+        }
+        .import-preview th {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+        }
+        
+        .import-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .import-stat {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .import-stat.success { background: #d4edda; color: #155724; }
+        .import-stat.warning { background: #fff3cd; color: #856404; }
+        .import-stat.danger { background: #f8d7da; color: #721c24; }
+        .import-stat h4 { margin: 0; font-size: 1.5rem; }
+        .import-stat p { margin: 5px 0 0; font-size: 0.8rem; }
+        
+        .progress-bar {
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        
+        .import-log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            display: none;
+        }
+        .import-log .error { color: #ff6b6b; }
+        .import-log .success { color: #51cf66; }
+        .import-log .skip { color: #ffd43b; }
+        
+        .btn-import { background: #6f42c1; color: white; padding: 10px 20px; }
+        .btn-import:hover { background: #5a32a3; }
+        
+        .template-info {
+            background: #e7f3ff;
+            border: 1px solid #b6d4fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .template-info h4 { margin: 0 0 10px; color: #0d6efd; }
+        .template-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
         }
     </style>
 </head>
@@ -86,8 +190,9 @@
             <div class="table-header">
                 <h3>📋 รายชื่อลูกค้า (เรียงตาม ก-ฮ)</h3>
                 <div class="table-actions">
+                    <button class="btn-import" onclick="openImportModal()">📤 Import Excel</button>
                     <button class="btn-excel" onclick="exportCustomersToExcel()">📥 Export Excel</button>
-                    <button class="btn-add" onclick="openCustomerModal()">➕ เพิ่มลูกค้าใหม่</button>
+                    <button class="btn-add" onclick="openCustomerModal()">➕ เพิ่มลูกค้า</button>
                 </div>
             </div>
 
@@ -129,7 +234,6 @@
             <span class="close" onclick="closeCustomerModal()">&times;</span>
             <h2 id="customerModalTitle">เพิ่มลูกค้าใหม่</h2>
             
-            <!-- Duplicate Warning -->
             <div class="duplicate-warning" id="duplicateWarning">
                 ⚠️ <strong>พบข้อมูลซ้ำ!</strong> ลูกค้าชื่อนี้มีอยู่ในระบบแล้ว
             </div>
@@ -170,6 +274,78 @@
                 
                 <button type="submit" class="btn-save" id="customerSaveBtn">💾 บันทึกข้อมูล</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal: Import Excel -->
+    <div id="importModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeImportModal()">&times;</span>
+            <h2>📤 Import ข้อมูลลูกค้าจาก Excel</h2>
+            
+            <!-- Template Info -->
+            <div class="template-info">
+                <h4>📋 รูปแบบไฟล์ที่รองรับ</h4>
+                <p>รองรับไฟล์ <code>.xlsx</code> <code>.xls</code> <code>.csv</code></p>
+                <p>คอลัมน์ที่ต้องมี: <code>nickname</code> หรือ <code>ชื่อเล่น</code></p>
+                <p>คอลัมน์อื่นๆ (ถ้ามี): <code>Name - Surname</code>, <code>ID Card</code>, <code>Telephone</code>, <code>Birthday</code>, <code>Addresses</code></p>
+                <button class="btn-outline" onclick="downloadTemplate()" style="margin-top:10px;">📥 ดาวน์โหลด Template</button>
+            </div>
+            
+            <!-- Drop Zone -->
+            <div class="import-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size: 3rem;">📁</div>
+                <h3>ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</h3>
+                <p>รองรับ .xlsx, .xls, .csv</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event)">
+            </div>
+            
+            <!-- Stats -->
+            <div class="import-stats" id="importStats" style="display: none;">
+                <div class="import-stat success">
+                    <h4 id="statTotal">0</h4>
+                    <p>รายการทั้งหมด</p>
+                </div>
+                <div class="import-stat warning">
+                    <h4 id="statNew">0</h4>
+                    <p>รายการใหม่</p>
+                </div>
+                <div class="import-stat danger">
+                    <h4 id="statDuplicate">0</h4>
+                    <p>ซ้ำ (ข้าม)</p>
+                </div>
+            </div>
+            
+            <!-- Preview Table -->
+            <div class="import-preview" id="importPreview" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>สถานะ</th>
+                            <th>ชื่อเล่น</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>เลขบัตร</th>
+                            <th>เบอร์โทร</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody"></tbody>
+                </table>
+            </div>
+            
+            <!-- Progress -->
+            <div class="progress-bar" id="importProgress" style="display: none;">
+                <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+            </div>
+            
+            <!-- Log -->
+            <div class="import-log" id="importLog"></div>
+            
+            <!-- Actions -->
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn-success" id="startImportBtn" onclick="startImport()" style="display: none; padding: 12px 30px;">
+                    🚀 เริ่ม Import ข้อมูล
+                </button>
+            </div>
         </div>
     </div>
 
