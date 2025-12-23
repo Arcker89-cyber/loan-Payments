@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเงินกู้ | จัดการลูกค้า</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>👥 จัดการข้อมูลลูกค้า</h1>
+            <div class="user-info">
+                <span id="userEmail">กำลังโหลด...</span>
+                <button class="btn-logout" onclick="logout()">ออกจากระบบ</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">📊 แดชบอร์ด</a>
+            <a href="customers.html" class="nav-link active">👥 จัดการลูกค้า</a>
+        </nav>
+
+        <!-- Summary Card -->
+        <div class="cards-grid">
+            <div class="card purple">
+                <h4>👥 จำนวนลูกค้าทั้งหมด</h4>
+                <p id="customerCount">0</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>📋 รายชื่อลูกค้า</h3>
+                <div class="table-actions">
+                    <button class="btn-export" onclick="exportCustomersToCSV()">📥 Export CSV</button>
+                    <button class="btn-add" onclick="openCustomerModal()">➕ เพิ่มลูกค้าใหม่</button>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 ค้นหาลูกค้า (ชื่อ, เลขบัตร, เบอร์โทร...)" oninput="searchCustomers()">
+            </div>
+
+            <!-- Customer Cards -->
+            <div id="customerList" class="customer-cards">
+                <div class="empty-state">
+                    <h3>กำลังโหลดข้อมูล...</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Customer -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCustomerModal()">&times;</span>
+            <h2 id="customerModalTitle">เพิ่มลูกค้าใหม่</h2>
+            
+            <form id="customerForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="custNickname">Nickname *</label>
+                        <input type="text" id="custNickname" required placeholder="ชื่อเล่น">
+                    </div>
+                    <div class="form-group">
+                        <label for="custNameSurname">Name - Surname *</label>
+                        <input type="text" id="custNameSurname" required placeholder="ชื่อ-นามสกุล">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="custIdCard">ID Card</label>
+                        <input type="text" id="custIdCard" maxlength="13" placeholder="1234567890123">
+                    </div>
+                    <div class="form-group">
+                        <label for="custTelephone">Telephone</label>
+                        <input type="tel" id="custTelephone" placeholder="0812345678">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="custBirthday">Birthday</label>
+                        <input type="date" id="custBirthday">
+                    </div>
+                    <div class="form-group">
+                        <label for="custAddress">Addresses</label>
+                        <input type="text" id="custAddress" placeholder="ที่อยู่">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-save" id="customerSaveBtn">💾 บันทึกข้อมูล</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= FIREBASE SDK (COMPAT) ================= -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- ================= YOUR JS ================= -->
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/customers.js"></script>
+
+</body>
+</html>
