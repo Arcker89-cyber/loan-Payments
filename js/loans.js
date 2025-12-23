@@ -916,13 +916,12 @@ function parseLoanImportData(jsonData) {
         const nickname = getValue(row, columnMap.nickname);
         const loanDate = parseDate(getValue(row, columnMap.loanDate));
         const principal = parseNumber(getValue(row, columnMap.principal));
-        const interestRate = parseNumber(getValue(row, columnMap.interestRate)) || 20;
-        let interest = parseNumber(getValue(row, columnMap.interest));
         
-        // คำนวณดอกเบี้ยถ้าไม่มีค่า
-        if (!interest && principal > 0) {
-            interest = principal * (interestRate / 100);
-        }
+        // อัตราดอกเบี้ย - ถ้าไม่ระบุใช้ 20% เป็น default
+        const interestRate = parseNumber(getValue(row, columnMap.interestRate)) || 20;
+        
+        // ✅ คำนวณดอกเบี้ยอัตโนมัติเสมอจากสูตร: เงินต้น × อัตราดอกเบี้ย%
+        const interest = principal * (interestRate / 100);
         
         const isValid = nickname && loanDate && principal > 0;
         
@@ -964,6 +963,7 @@ function renderLoanImportPreview() {
     tbody.innerHTML = "";
     
     loanImportData.slice(0, 50).forEach(item => {
+        const total = item.principal + item.interest;
         const row = document.createElement("tr");
         row.style.opacity = item.isValid ? "1" : "0.5";
         row.innerHTML = `
@@ -971,8 +971,10 @@ function renderLoanImportPreview() {
             <td>${item.nickname || '-'}</td>
             <td>${item.nameSurname || '-'}</td>
             <td>${item.loanDate || '-'}</td>
-            <td>${item.principal.toLocaleString()}</td>
-            <td>${item.interest.toLocaleString()}</td>
+            <td style="text-align:right">${item.principal.toLocaleString()}</td>
+            <td style="text-align:center;color:#28a745">${item.interestRate}%</td>
+            <td style="text-align:right;color:#007bff">${item.interest.toLocaleString()}</td>
+            <td style="text-align:right;font-weight:bold">${total.toLocaleString()}</td>
             <td>${item.status}</td>
         `;
         tbody.appendChild(row);
@@ -980,7 +982,7 @@ function renderLoanImportPreview() {
     
     if (loanImportData.length > 50) {
         const row = document.createElement("tr");
-        row.innerHTML = `<td colspan="7" style="text-align:center;color:#999;">... และอีก ${loanImportData.length - 50} รายการ</td>`;
+        row.innerHTML = `<td colspan="9" style="text-align:center;color:#999;">... และอีก ${loanImportData.length - 50} รายการ</td>`;
         tbody.appendChild(row);
     }
     
