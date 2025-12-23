@@ -685,25 +685,64 @@ function processLoanFile(file) {
         return;
     }
     
+    console.log("📁 Processing file:", file.name, "Type:", ext);
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-            
-            parseLoanImportData(jsonData);
-        } catch (error) {
-            console.error("Error parsing file:", error);
-            alert("❌ ไม่สามารถอ่านไฟล์ได้: " + error.message);
-        }
-    };
-    reader.readAsArrayBuffer(file);
+    
+    if (ext === 'csv') {
+        // อ่าน CSV เป็น text
+        reader.onload = (e) => {
+            try {
+                let csvText = e.target.result;
+                // ลบ BOM ถ้ามี
+                if (csvText.charCodeAt(0) === 0xFEFF) {
+                    csvText = csvText.substring(1);
+                }
+                // แปลง Windows line endings
+                csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                
+                console.log("📄 CSV Preview:", csvText.substring(0, 200));
+                
+                const workbook = XLSX.read(csvText, { type: 'string' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log("📊 Parsed rows:", jsonData.length);
+                console.log("📊 First row:", jsonData[0]);
+                
+                parseLoanImportData(jsonData);
+            } catch (error) {
+                console.error("Error parsing CSV:", error);
+                alert("❌ ไม่สามารถอ่านไฟล์ CSV ได้: " + error.message);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    } else {
+        // อ่าน Excel เป็น array buffer
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                console.log("📊 Parsed rows:", jsonData.length);
+                
+                parseLoanImportData(jsonData);
+            } catch (error) {
+                console.error("Error parsing Excel:", error);
+                alert("❌ ไม่สามารถอ่านไฟล์ได้: " + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
 }
 
 function parseLoanImportData(jsonData) {
+    console.log("🔄 parseLoanImportData called with", jsonData.length, "rows");
+    
     loanImportData = [];
     let validCount = 0;
     let invalidCount = 0;
@@ -749,27 +788,38 @@ function parseLoanImportData(jsonData) {
         val = String(val).trim();
         
         // รูปแบบ YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-            return val;
+        if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(val)) {
+            const [y, m, d] = val.split('-');
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
         
-        // รูปแบบ DD/MM/YYYY หรือ DD-MM-YYYY
+        // รูปแบบ DD/MM/YYYY หรือ D/M/YYYY
         const parts = val.split(/[\/\-]/);
         if (parts.length === 3) {
-            let [day, month, year] = parts;
-            year = parseInt(year);
+            let day = String(parts[0]).trim();
+            let month = String(parts[1]).trim();
+            let year = parseInt(parts[2]);
+            
             if (year > 2500) year -= 543; // แปลง พ.ศ. เป็น ค.ศ.
             if (year < 100) year += 2000; // แปลง 2 หลักเป็น 4 หลัก
+            
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
         
+        console.warn("⚠️ Cannot parse date:", val);
         return '';
     }
     
-    jsonData.forEach((row) => {
+    jsonData.forEach((row, index) => {
         const nickname = getValue(row, columnMap.nickname);
-        const loanDate = parseDate(getValue(row, columnMap.loanDate));
+        const loanDateRaw = getValue(row, columnMap.loanDate);
+        const loanDate = parseDate(loanDateRaw);
         const principal = parseNumber(getValue(row, columnMap.principal));
+        
+        // Debug first few rows
+        if (index < 3) {
+            console.log(`Row ${index}:`, { nickname, loanDateRaw, loanDate, principal });
+        }
         
         // ต้องมี nickname, loanDate และ principal
         const isValid = nickname && loanDate && principal > 0;
@@ -778,6 +828,9 @@ function parseLoanImportData(jsonData) {
             validCount++;
         } else {
             invalidCount++;
+            if (nickname) {
+                console.log(`❌ Invalid row ${index}:`, { nickname, loanDate, principal });
+            }
         }
         
         loanImportData.push({
@@ -794,6 +847,8 @@ function parseLoanImportData(jsonData) {
             isValid: isValid
         });
     });
+    
+    console.log(`✅ Parsed: ${validCount} valid, ${invalidCount} invalid`);
     
     // Update stats
     document.getElementById("loanStatTotal").textContent = loanImportData.length;
