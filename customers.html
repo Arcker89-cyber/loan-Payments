@@ -6,6 +6,54 @@
     <title>ระบบจัดการเงินกู้ | จัดการลูกค้า</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .table-customers {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .table-customers th, .table-customers td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table-customers th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #555;
+            position: sticky;
+            top: 0;
+        }
+        .table-customers tr:hover {
+            background: #f0f7ff;
+        }
+        .table-customers .actions {
+            white-space: nowrap;
+        }
+        .id-card-masked {
+            font-family: monospace;
+            color: #666;
+        }
+        .sort-indicator {
+            margin-left: 5px;
+            color: #007bff;
+        }
+        .duplicate-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .address-cell {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -33,24 +81,44 @@
             </div>
         </div>
 
-        <!-- Actions -->
+        <!-- Table Section -->
         <div class="table-section">
             <div class="table-header">
-                <h3>📋 รายชื่อลูกค้า</h3>
+                <h3>📋 รายชื่อลูกค้า (เรียงตาม ก-ฮ)</h3>
                 <div class="table-actions">
                     <button class="btn-excel" onclick="exportCustomersToExcel()">📥 Export Excel</button>
                     <button class="btn-add" onclick="openCustomerModal()">➕ เพิ่มลูกค้าใหม่</button>
                 </div>
             </div>
 
+            <!-- Search -->
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="🔍 ค้นหาลูกค้า (ชื่อ, เลขบัตร, เบอร์โทร...)" oninput="searchCustomers()">
             </div>
 
-            <div id="customerList" class="customer-cards">
-                <div class="empty-state">
-                    <h3>กำลังโหลดข้อมูล...</h3>
-                </div>
+            <!-- Customer Table -->
+            <div class="table-wrapper">
+                <table class="table-customers">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>ชื่อเล่น <span class="sort-indicator">▲</span></th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>เลขบัตรประชาชน</th>
+                            <th>เบอร์โทรศัพท์</th>
+                            <th>วันเกิด</th>
+                            <th>ที่อยู่</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 30px; color: #999;">
+                                กำลังโหลดข้อมูล...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -61,11 +129,16 @@
             <span class="close" onclick="closeCustomerModal()">&times;</span>
             <h2 id="customerModalTitle">เพิ่มลูกค้าใหม่</h2>
             
+            <!-- Duplicate Warning -->
+            <div class="duplicate-warning" id="duplicateWarning">
+                ⚠️ <strong>พบข้อมูลซ้ำ!</strong> ลูกค้าชื่อนี้มีอยู่ในระบบแล้ว
+            </div>
+            
             <form id="customerForm">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="custNickname">ชื่อเล่น *</label>
-                        <input type="text" id="custNickname" required placeholder="ชื่อเล่น">
+                        <label for="custNickname">ชื่อเล่น * <small style="color:#999">(ต้องไม่ซ้ำ)</small></label>
+                        <input type="text" id="custNickname" required placeholder="ชื่อเล่น" oninput="checkDuplicate()">
                     </div>
                     <div class="form-group">
                         <label for="custNameSurname">ชื่อ-นามสกุล *</label>
