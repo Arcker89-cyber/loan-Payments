@@ -4,11 +4,58 @@ console.log("✅ loans.js loaded");
 // Global Variables
 let loanChart = null;
 let allLoans = [];
+let allCustomers = [];
 
 // DOM Elements
 const loanModal = document.getElementById("loanModal");
 const loanForm = document.getElementById("loanForm");
 const loanTableBody = document.getElementById("loanTableBody");
+
+// ============ LOAD CUSTOMERS FOR DROPDOWN ============
+async function loadCustomers() {
+    try {
+        const snapshot = await db.collection("customers").orderBy("nickname").get();
+        allCustomers = [];
+        
+        snapshot.forEach(doc => {
+            allCustomers.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Populate dropdown
+        const customerSelect = document.getElementById("customerSelect");
+        if (customerSelect) {
+            customerSelect.innerHTML = '<option value="">-- เลือกลูกค้าจากระบบ --</option>';
+            allCustomers.forEach(c => {
+                customerSelect.innerHTML += `<option value="${c.id}">${c.nickname} - ${c.nameSurname}</option>`;
+            });
+        }
+
+        console.log("✅ Customers loaded:", allCustomers.length);
+    } catch (error) {
+        console.error("❌ Load customers error:", error);
+    }
+}
+
+// Fill customer data when selected from dropdown
+function fillCustomerData() {
+    const customerSelect = document.getElementById("customerSelect");
+    const selectedId = customerSelect.value;
+    
+    if (!selectedId) {
+        // Clear form if no selection
+        return;
+    }
+
+    const customer = allCustomers.find(c => c.id === selectedId);
+    if (customer) {
+        document.getElementById("nickname").value = customer.nickname || '';
+        document.getElementById("nameSurname").value = customer.nameSurname || '';
+        document.getElementById("idCard").value = customer.idCard || '';
+        document.getElementById("telephone").value = customer.telephone || '';
+        document.getElementById("birthday").value = customer.birthday || '';
+        document.getElementById("address").value = customer.address || '';
+    }
+}
 
 // ============ MODAL FUNCTIONS ============
 function openModal() {
@@ -16,6 +63,7 @@ function openModal() {
     document.getElementById("modalTitle").textContent = "เพิ่มข้อมูลเงินกู้ใหม่";
     loanForm.reset();
     delete loanForm.dataset.editId;
+    loadCustomers(); // Reload customers
 }
 
 function closeModalFunc() {
@@ -92,14 +140,14 @@ async function loadDashboardData(startDate = null, endDate = null) {
     }
 }
 
-// ============ RENDER TABLE ============
+// ============ RENDER TABLE (17 COLUMNS) ============
 function renderTable(loans) {
     loanTableBody.innerHTML = "";
     
     if (loans.length === 0) {
         loanTableBody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 30px; color: #999;">
+                <td colspan="17" style="text-align: center; padding: 30px; color: #999;">
                     ยังไม่มีข้อมูลเงินกู้
                 </td>
             </tr>
@@ -109,14 +157,28 @@ function renderTable(loans) {
 
     loans.forEach((loan, index) => {
         const statusClass = getStatusClass(loan.status);
+        const principal = parseFloat(loan.principal) || 0;
+        const interest = parseFloat(loan.interest) || 0;
+        const total = principal + interest;
+
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>${loan.nickname || '-'}</td>
             <td>${loan.nameSurname || '-'}</td>
-            <td>${parseFloat(loan.principal || 0).toLocaleString()} ฿</td>
-            <td>${parseFloat(loan.interest || 0).toLocaleString()} ฿</td>
+            <td>${loan.idCard || '-'}</td>
+            <td>${loan.telephone || '-'}</td>
+            <td>${formatDate(loan.birthday) || '-'}</td>
+            <td title="${loan.address || ''}">${truncate(loan.address, 20) || '-'}</td>
+            <td>${formatDate(loan.loanDate) || '-'}</td>
+            <td>${formatDate(loan.returnDate) || '-'}</td>
+            <td>${principal.toLocaleString()}</td>
+            <td>${loan.interestType || '-'}</td>
+            <td>${interest.toLocaleString()}</td>
+            <td><strong>${total.toLocaleString()}</strong></td>
+            <td title="${loan.summary || ''}">${truncate(loan.summary, 15) || '-'}</td>
             <td><span class="status-badge ${statusClass}">${loan.status || '-'}</span></td>
+            <td title="${loan.documents || ''}">${truncate(loan.documents, 15) || '-'}</td>
             <td>
                 <button class="btn-action btn-view" onclick="viewLoan('${loan.id}')">ดู</button>
                 <button class="btn-action btn-edit" onclick="editLoan('${loan.id}')">แก้ไข</button>
@@ -125,6 +187,18 @@ function renderTable(loans) {
         `;
         loanTableBody.appendChild(row);
     });
+}
+
+// Helper: Truncate text
+function truncate(str, maxLength) {
+    if (!str) return '';
+    return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}
+
+// Helper: Format date
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    return dateStr; // Already in YYYY-MM-DD format
 }
 
 function getStatusClass(status) {
@@ -138,6 +212,88 @@ function getStatusClass(status) {
         default:
             return 'active';
     }
+}
+
+// ============ EXPORT TO CSV ============
+function exportToCSV() {
+    if (allLoans.length === 0) {
+        alert("ไม่มีข้อมูลให้ Export");
+        return;
+    }
+
+    // CSV Headers
+    const headers = [
+        "No.",
+        "Nickname",
+        "Name - Surname",
+        "ID Card",
+        "Telephone",
+        "Birthday",
+        "Addresses",
+        "วันที่กู้",
+        "วันที่คืน",
+        "เงินต้น",
+        "ประเภทดอกเบี้ย",
+        "ดอกเบี้ย",
+        "ต้น + ดอก",
+        "สรุป",
+        "สถานะการกู้",
+        "เอกสาร"
+    ];
+
+    // CSV Rows
+    const rows = allLoans.map((loan, index) => {
+        const principal = parseFloat(loan.principal) || 0;
+        const interest = parseFloat(loan.interest) || 0;
+        const total = principal + interest;
+
+        return [
+            index + 1,
+            escapeCSV(loan.nickname || ''),
+            escapeCSV(loan.nameSurname || ''),
+            escapeCSV(loan.idCard || ''),
+            escapeCSV(loan.telephone || ''),
+            escapeCSV(loan.birthday || ''),
+            escapeCSV(loan.address || ''),
+            escapeCSV(loan.loanDate || ''),
+            escapeCSV(loan.returnDate || ''),
+            principal,
+            escapeCSV(loan.interestType || ''),
+            interest,
+            total,
+            escapeCSV(loan.summary || ''),
+            escapeCSV(loan.status || ''),
+            escapeCSV(loan.documents || '')
+        ].join(',');
+    });
+
+    // Combine headers and rows
+    const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `loan_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    console.log("✅ CSV exported successfully");
+}
+
+// Helper: Escape CSV special characters
+function escapeCSV(str) {
+    if (str === null || str === undefined) return '';
+    str = String(str);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
 }
 
 // ============ RENDER CHART ============
@@ -224,6 +380,8 @@ loanForm.addEventListener("submit", async (e) => {
         interestType: document.getElementById("interestType").value,
         interest: parseFloat(document.getElementById("interest").value) || 0,
         status: document.getElementById("status").value,
+        summary: document.getElementById("summary").value.trim(),
+        documents: document.getElementById("documents").value.trim(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -251,7 +409,7 @@ loanForm.addEventListener("submit", async (e) => {
         alert("เกิดข้อผิดพลาด: " + error.message);
     } finally {
         saveBtn.disabled = false;
-        saveBtn.textContent = "บันทึกข้อมูล";
+        saveBtn.textContent = "💾 บันทึกข้อมูล";
     }
 });
 
@@ -260,23 +418,35 @@ function viewLoan(id) {
     const loan = allLoans.find(l => l.id === id);
     if (!loan) return;
 
+    const principal = parseFloat(loan.principal) || 0;
+    const interest = parseFloat(loan.interest) || 0;
+    const total = principal + interest;
+
     const detail = `
 📋 รายละเอียดเงินกู้
 
-👤 ชื่อเล่น: ${loan.nickname || '-'}
-📝 ชื่อ-นามสกุล: ${loan.nameSurname || '-'}
-🪪 เลขบัตร: ${loan.idCard || '-'}
-📞 โทรศัพท์: ${loan.telephone || '-'}
-🎂 วันเกิด: ${loan.birthday || '-'}
-🏠 ที่อยู่: ${loan.address || '-'}
+👤 ข้อมูลผู้กู้
+━━━━━━━━━━━━━━━━
+ชื่อเล่น: ${loan.nickname || '-'}
+ชื่อ-นามสกุล: ${loan.nameSurname || '-'}
+เลขบัตร: ${loan.idCard || '-'}
+โทรศัพท์: ${loan.telephone || '-'}
+วันเกิด: ${loan.birthday || '-'}
+ที่อยู่: ${loan.address || '-'}
 
-💰 เงินต้น: ${parseFloat(loan.principal || 0).toLocaleString()} บาท
-📊 ประเภทดอกเบี้ย: ${loan.interestType || '-'}
-💵 ดอกเบี้ย: ${parseFloat(loan.interest || 0).toLocaleString()} บาท
+💰 ข้อมูลเงินกู้
+━━━━━━━━━━━━━━━━
+เงินต้น: ${principal.toLocaleString()} บาท
+ประเภทดอกเบี้ย: ${loan.interestType || '-'}
+ดอกเบี้ย: ${interest.toLocaleString()} บาท
+ต้น + ดอก: ${total.toLocaleString()} บาท
 
 📅 วันที่กู้: ${loan.loanDate || '-'}
 📅 วันครบกำหนด: ${loan.returnDate || '-'}
 📌 สถานะ: ${loan.status || '-'}
+
+📝 สรุป: ${loan.summary || '-'}
+📎 เอกสาร: ${loan.documents || '-'}
     `.trim();
 
     alert(detail);
@@ -287,24 +457,29 @@ function editLoan(id) {
     const loan = allLoans.find(l => l.id === id);
     if (!loan) return;
 
-    // Fill form with existing data
-    document.getElementById("nickname").value = loan.nickname || '';
-    document.getElementById("nameSurname").value = loan.nameSurname || '';
-    document.getElementById("idCard").value = loan.idCard || '';
-    document.getElementById("telephone").value = loan.telephone || '';
-    document.getElementById("birthday").value = loan.birthday || '';
-    document.getElementById("address").value = loan.address || '';
-    document.getElementById("loanDate").value = loan.loanDate || '';
-    document.getElementById("returnDate").value = loan.returnDate || '';
-    document.getElementById("principal").value = loan.principal || '';
-    document.getElementById("interestType").value = loan.interestType || 'รายเดือน';
-    document.getElementById("interest").value = loan.interest || '';
-    document.getElementById("status").value = loan.status || 'กำลังผ่อน';
+    loadCustomers().then(() => {
+        // Fill form with existing data
+        document.getElementById("customerSelect").value = '';
+        document.getElementById("nickname").value = loan.nickname || '';
+        document.getElementById("nameSurname").value = loan.nameSurname || '';
+        document.getElementById("idCard").value = loan.idCard || '';
+        document.getElementById("telephone").value = loan.telephone || '';
+        document.getElementById("birthday").value = loan.birthday || '';
+        document.getElementById("address").value = loan.address || '';
+        document.getElementById("loanDate").value = loan.loanDate || '';
+        document.getElementById("returnDate").value = loan.returnDate || '';
+        document.getElementById("principal").value = loan.principal || '';
+        document.getElementById("interestType").value = loan.interestType || 'รายเดือน';
+        document.getElementById("interest").value = loan.interest || '';
+        document.getElementById("status").value = loan.status || 'กำลังผ่อน';
+        document.getElementById("summary").value = loan.summary || '';
+        document.getElementById("documents").value = loan.documents || '';
 
-    // Set edit mode
-    loanForm.dataset.editId = id;
-    document.getElementById("modalTitle").textContent = "แก้ไขข้อมูลเงินกู้";
-    loanModal.style.display = "block";
+        // Set edit mode
+        loanForm.dataset.editId = id;
+        document.getElementById("modalTitle").textContent = "แก้ไขข้อมูลเงินกู้";
+        loanModal.style.display = "block";
+    });
 }
 
 // Delete Loan
@@ -350,6 +525,7 @@ firebase.auth().onAuthStateChanged(user => {
         console.log("👤 Logged in as:", user.email);
         document.getElementById("userEmail").textContent = user.email;
         loadDashboardData();
+        loadCustomers();
     } else {
         console.log("❌ Not logged in, redirecting...");
         window.location.href = "index.html";
