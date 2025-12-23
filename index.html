@@ -1,41 +1,44 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>Loan Payment System | Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเงินกู้ | เข้าสู่ระบบ</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <div class="login-container">
-    <h2>🔐 ระบบจัดการเงินกู้</h2>
-
-    <div class="form-group">
-      <label for="email">อีเมล</label>
-      <input type="email" id="email" placeholder="example@email.com" required>
+    <div class="login-container">
+        <h2>🔐 ระบบจัดการเงินกู้</h2>
+        
+        <div class="form-group">
+            <label for="email">อีเมล</label>
+            <input type="email" id="email" placeholder="example@email.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">รหัสผ่าน</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+        
+        <button onclick="login()">เข้าสู่ระบบ</button>
+        
+        <p class="error" id="errorMsg"></p>
     </div>
 
-    <div class="form-group">
-      <label for="password">รหัสผ่าน</label>
-      <input type="password" id="password" placeholder="••••••••" required>
-    </div>
+    <!-- ================= FIREBASE SDK (COMPAT) ================= -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    <button onclick="login()">เข้าสู่ระบบ</button>
-
-    <p class="error" id="errorMsg"></p>
-  </div>
-
-  <!-- ================= FIREBASE SDK (COMPAT) ================= -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- ================= YOUR JS ================= -->
-  <script src="js/firebase.js"></script>
-  <script src="js/auth.js"></script>
+    <!-- ================= YOUR JS ================= -->
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
 
 </body>
 </html>
