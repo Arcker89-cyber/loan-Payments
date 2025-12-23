@@ -11,6 +11,114 @@
     <style>
         .text-right { text-align: right; }
         
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            min-width: 300px;
+        }
+        .toast.success { background: linear-gradient(135deg, #28a745, #20c997); }
+        .toast.error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
+        .toast.warning { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #333; }
+        .toast.info { background: linear-gradient(135deg, #007bff, #6f42c1); }
+        .toast .close-toast {
+            margin-left: auto;
+            cursor: pointer;
+            opacity: 0.7;
+            font-size: 1.2rem;
+        }
+        .toast .close-toast:hover { opacity: 1; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        /* Confirm Modal */
+        .confirm-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(3px);
+        }
+        .confirm-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .confirm-content h3 { margin: 0 0 15px; color: #333; }
+        .confirm-content p { color: #666; margin-bottom: 25px; }
+        .confirm-buttons { display: flex; gap: 15px; justify-content: center; }
+        .confirm-buttons button { padding: 12px 30px; border-radius: 8px; font-size: 1rem; }
+        .btn-confirm-yes { background: #dc3545; color: white; }
+        .btn-confirm-no { background: #6c757d; color: white; }
+        
+        /* Bulk Actions */
+        .bulk-actions {
+            display: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            color: white;
+            align-items: center;
+            gap: 15px;
+        }
+        .bulk-actions.show { display: flex; }
+        .bulk-actions span { font-weight: bold; }
+        .bulk-actions button { 
+            background: rgba(255,255,255,0.2); 
+            color: white; 
+            padding: 8px 15px;
+            border-radius: 6px;
+        }
+        .bulk-actions button:hover { background: rgba(255,255,255,0.3); }
+        
+        /* Checkbox Styling */
+        .row-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        /* Interest Rate Input */
+        .interest-calc {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .interest-calc input {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+        }
+        .interest-calc span { color: #666; font-size: 0.9rem; }
+        
         /* Import Modal Styles */
         .import-zone {
             border: 3px dashed #ccc;
@@ -36,18 +144,9 @@
             border: 1px solid #ddd;
             border-radius: 8px;
         }
-        .import-preview table {
-            width: 100%;
-            font-size: 0.8rem;
-        }
-        .import-preview th {
-            position: sticky;
-            top: 0;
-            background: #f8f9fa;
-        }
-        .import-preview td, .import-preview th {
-            padding: 6px 8px;
-        }
+        .import-preview table { width: 100%; font-size: 0.8rem; }
+        .import-preview th { position: sticky; top: 0; background: #f8f9fa; }
+        .import-preview td, .import-preview th { padding: 6px 8px; }
         
         .import-stats {
             display: grid;
@@ -99,7 +198,6 @@
         }
         .import-log .error { color: #ff6b6b; }
         .import-log .success { color: #51cf66; }
-        .import-log .skip { color: #ffd43b; }
         
         .btn-import { background: #6f42c1; color: white; padding: 10px 20px; }
         .btn-import:hover { background: #5a32a3; }
@@ -121,6 +219,21 @@
     </style>
 </head>
 <body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-content">
+            <h3 id="confirmTitle">ยืนยันการดำเนินการ</h3>
+            <p id="confirmMessage">คุณแน่ใจหรือไม่?</p>
+            <div class="confirm-buttons">
+                <button class="btn-confirm-no" onclick="closeConfirm()">ยกเลิก</button>
+                <button class="btn-confirm-yes" id="confirmYesBtn">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <header>
@@ -143,6 +256,7 @@
             <label>📅 เลือกเดือน:</label>
             <select id="monthSelect" onchange="filterByMonth()"></select>
             <select id="yearSelect" onchange="filterByMonth()"></select>
+            <button class="btn-outline" onclick="loadAllLoans()" style="margin-left: 10px;">📋 ดูทั้งหมด</button>
             <span class="month-display" id="currentMonthDisplay">-</span>
         </div>
 
@@ -190,10 +304,21 @@
                 </div>
             </div>
             
+            <!-- Bulk Actions Bar -->
+            <div class="bulk-actions" id="bulkActions">
+                <span>เลือกแล้ว <span id="selectedCount">0</span> รายการ</span>
+                <button onclick="bulkChangeStatus('ชำระแล้ว')">✅ ชำระแล้ว</button>
+                <button onclick="bulkChangeStatus('ค้างชำระ')">⏳ ค้างชำระ</button>
+                <button onclick="bulkChangeStatus('เกินกำหนด')">⚠️ เกินกำหนด</button>
+                <button onclick="bulkDelete()" style="background: rgba(220,53,69,0.8);">🗑️ ลบที่เลือก</button>
+                <button onclick="clearSelection()" style="margin-left: auto;">✖️ ยกเลิก</button>
+            </div>
+            
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="row-checkbox"></th>
                             <th>No.</th>
                             <th>ชื่อเล่น</th>
                             <th>ชื่อ-นามสกุล</th>
@@ -209,7 +334,7 @@
                     </thead>
                     <tbody id="loanTableBody">
                         <tr>
-                            <td colspan="11" style="text-align: center; padding: 30px; color: #999;">
+                            <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
                                 กำลังโหลดข้อมูล...
                             </td>
                         </tr>
@@ -264,11 +389,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="principal">เงินต้น (บาท) *</label>
-                        <input type="number" id="principal" min="0" step="0.01" required placeholder="0.00">
+                        <input type="number" id="principal" min="0" step="0.01" required placeholder="0.00" oninput="calculateInterest()">
                     </div>
                     <div class="form-group">
                         <label for="interestType">ประเภทดอกเบี้ย</label>
-                        <select id="interestType">
+                        <select id="interestType" onchange="calculateInterest()">
                             <option value="รายวัน">รายวัน</option>
                             <option value="รายสัปดาห์">รายสัปดาห์</option>
                             <option value="รายเดือน" selected>รายเดือน</option>
@@ -279,9 +404,19 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="interest">ดอกเบี้ย (บาท)</label>
-                        <input type="number" id="interest" min="0" step="0.01" placeholder="0.00">
+                        <label for="interestRate">อัตราดอกเบี้ย (%)</label>
+                        <div class="interest-calc">
+                            <input type="number" id="interestRate" min="0" max="100" step="0.1" value="20" oninput="calculateInterest()">
+                            <span>% ของเงินต้น</span>
+                        </div>
                     </div>
+                    <div class="form-group">
+                        <label for="interest">ดอกเบี้ย (บาท) <small style="color:#28a745;">(คำนวณอัตโนมัติ)</small></label>
+                        <input type="number" id="interest" min="0" step="0.01" placeholder="0.00" style="background:#f0fff0;">
+                    </div>
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
                         <label for="status">สถานะ</label>
                         <select id="status">
@@ -291,6 +426,10 @@
                             <option value="คืนแล้ว">คืนแล้ว</option>
                             <option value="ชำระแล้ว">ชำระแล้ว</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ยอดรวม (ต้น + ดอก)</label>
+                        <input type="text" id="totalDisplay" readonly style="background:#f8f9fa; font-weight:bold; color:#007bff;">
                     </div>
                 </div>
 
@@ -325,15 +464,13 @@
             <span class="close" onclick="closeImportLoanModal()">&times;</span>
             <h2>📤 Import ข้อมูลเงินกู้จาก Excel</h2>
             
-            <!-- Template Info -->
             <div class="template-info">
                 <h4>📋 รูปแบบไฟล์ที่รองรับ</h4>
-                <p>รองรับไฟล์ <code>.xlsx</code> <code>.xls</code> <code>.csv</code> (เหมือนไฟล์ที่ Export)</p>
-                <p>คอลัมน์: <code>Nickname</code>, <code>Name-Surname</code>, <code>วันที่กู้</code>, <code>วันที่คืน</code>, <code>เงินต้น</code>, <code>ประเภทดอกเบี้ย</code>, <code>ดอกเบี้ย</code>, <code>สถานะ</code></p>
+                <p>รองรับไฟล์ <code>.xlsx</code> <code>.xls</code> <code>.csv</code></p>
+                <p>คอลัมน์: <code>Nickname</code>, <code>Name-Surname</code>, <code>วันที่กู้</code>, <code>วันที่คืน</code>, <code>เงินต้น</code>, <code>ดอกเบี้ย(%)</code>, <code>สถานะ</code></p>
                 <button class="btn-outline" onclick="downloadLoanTemplate()" style="margin-top:10px;">📥 ดาวน์โหลด Template</button>
             </div>
             
-            <!-- Drop Zone -->
             <div class="import-zone" id="loanDropZone" onclick="document.getElementById('loanFileInput').click()">
                 <div style="font-size: 3rem;">📁</div>
                 <h3>ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</h3>
@@ -341,7 +478,6 @@
                 <input type="file" id="loanFileInput" accept=".xlsx,.xls,.csv" onchange="handleLoanFileSelect(event)">
             </div>
             
-            <!-- Stats -->
             <div class="import-stats" id="loanImportStats" style="display: none;">
                 <div class="import-stat info">
                     <h4 id="loanStatTotal">0</h4>
@@ -357,7 +493,6 @@
                 </div>
             </div>
             
-            <!-- Preview Table -->
             <div class="import-preview" id="loanImportPreview" style="display: none;">
                 <table>
                     <thead>
@@ -375,15 +510,12 @@
                 </table>
             </div>
             
-            <!-- Progress -->
             <div class="progress-bar" id="loanImportProgress" style="display: none;">
                 <div class="progress-fill" id="loanProgressFill" style="width: 0%;">0%</div>
             </div>
             
-            <!-- Log -->
             <div class="import-log" id="loanImportLog"></div>
             
-            <!-- Actions -->
             <div style="text-align: center; margin-top: 15px;">
                 <button class="btn-success" id="startLoanImportBtn" onclick="startLoanImport()" style="display: none; padding: 12px 30px;">
                     🚀 เริ่ม Import ข้อมูล
