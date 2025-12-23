@@ -6,9 +6,118 @@
     <title>ระบบจัดการเงินกู้ | แดชบอร์ด</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .text-right { text-align: right; }
+        
+        /* Import Modal Styles */
+        .import-zone {
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .import-zone:hover, .import-zone.dragover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+        .import-zone h3 { color: #666; margin: 10px 0 5px; }
+        .import-zone p { color: #999; font-size: 0.9rem; }
+        .import-zone input[type="file"] { display: none; }
+        
+        .import-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .import-preview table {
+            width: 100%;
+            font-size: 0.8rem;
+        }
+        .import-preview th {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+        }
+        .import-preview td, .import-preview th {
+            padding: 6px 8px;
+        }
+        
+        .import-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .import-stat {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .import-stat.success { background: #d4edda; color: #155724; }
+        .import-stat.warning { background: #fff3cd; color: #856404; }
+        .import-stat.info { background: #cce5ff; color: #004085; }
+        .import-stat h4 { margin: 0; font-size: 1.5rem; }
+        .import-stat p { margin: 5px 0 0; font-size: 0.8rem; }
+        
+        .progress-bar {
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        
+        .import-log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            display: none;
+        }
+        .import-log .error { color: #ff6b6b; }
+        .import-log .success { color: #51cf66; }
+        .import-log .skip { color: #ffd43b; }
+        
+        .btn-import { background: #6f42c1; color: white; padding: 10px 20px; }
+        .btn-import:hover { background: #5a32a3; }
+        
+        .template-info {
+            background: #e7f3ff;
+            border: 1px solid #b6d4fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .template-info h4 { margin: 0 0 10px; color: #0d6efd; }
+        .template-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -75,6 +184,7 @@
             <div class="table-header">
                 <h3>📋 รายการเงินกู้ประจำเดือน</h3>
                 <div class="table-actions">
+                    <button class="btn-import" onclick="openImportLoanModal()">📤 Import Excel</button>
                     <button class="btn-excel" onclick="exportToExcel()">📥 Export Excel</button>
                     <button class="btn-add" onclick="openModal()">➕ เพิ่มรายการ</button>
                 </div>
@@ -206,6 +316,79 @@
             <span class="close" onclick="closeDetailModal()">&times;</span>
             <h2>📋 รายละเอียดเงินกู้</h2>
             <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Import Loan Modal -->
+    <div id="importLoanModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeImportLoanModal()">&times;</span>
+            <h2>📤 Import ข้อมูลเงินกู้จาก Excel</h2>
+            
+            <!-- Template Info -->
+            <div class="template-info">
+                <h4>📋 รูปแบบไฟล์ที่รองรับ</h4>
+                <p>รองรับไฟล์ <code>.xlsx</code> <code>.xls</code> <code>.csv</code> (เหมือนไฟล์ที่ Export)</p>
+                <p>คอลัมน์: <code>Nickname</code>, <code>Name-Surname</code>, <code>วันที่กู้</code>, <code>วันที่คืน</code>, <code>เงินต้น</code>, <code>ประเภทดอกเบี้ย</code>, <code>ดอกเบี้ย</code>, <code>สถานะ</code></p>
+                <button class="btn-outline" onclick="downloadLoanTemplate()" style="margin-top:10px;">📥 ดาวน์โหลด Template</button>
+            </div>
+            
+            <!-- Drop Zone -->
+            <div class="import-zone" id="loanDropZone" onclick="document.getElementById('loanFileInput').click()">
+                <div style="font-size: 3rem;">📁</div>
+                <h3>ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</h3>
+                <p>รองรับ .xlsx, .xls, .csv</p>
+                <input type="file" id="loanFileInput" accept=".xlsx,.xls,.csv" onchange="handleLoanFileSelect(event)">
+            </div>
+            
+            <!-- Stats -->
+            <div class="import-stats" id="loanImportStats" style="display: none;">
+                <div class="import-stat info">
+                    <h4 id="loanStatTotal">0</h4>
+                    <p>รายการทั้งหมด</p>
+                </div>
+                <div class="import-stat success">
+                    <h4 id="loanStatValid">0</h4>
+                    <p>รายการถูกต้อง</p>
+                </div>
+                <div class="import-stat warning">
+                    <h4 id="loanStatInvalid">0</h4>
+                    <p>ไม่สมบูรณ์ (ข้าม)</p>
+                </div>
+            </div>
+            
+            <!-- Preview Table -->
+            <div class="import-preview" id="loanImportPreview" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>สถานะ</th>
+                            <th>ชื่อเล่น</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>วันที่กู้</th>
+                            <th>เงินต้น</th>
+                            <th>ดอกเบี้ย</th>
+                            <th>สถานะกู้</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loanPreviewTableBody"></tbody>
+                </table>
+            </div>
+            
+            <!-- Progress -->
+            <div class="progress-bar" id="loanImportProgress" style="display: none;">
+                <div class="progress-fill" id="loanProgressFill" style="width: 0%;">0%</div>
+            </div>
+            
+            <!-- Log -->
+            <div class="import-log" id="loanImportLog"></div>
+            
+            <!-- Actions -->
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn-success" id="startLoanImportBtn" onclick="startLoanImport()" style="display: none; padding: 12px 30px;">
+                    🚀 เริ่ม Import ข้อมูล
+                </button>
+            </div>
         </div>
     </div>
 
