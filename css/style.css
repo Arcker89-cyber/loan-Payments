@@ -209,6 +209,12 @@ table tr:hover { background: #f8f9fa; }
     white-space: nowrap;
 }
 
+/* สถานะใหม่ */
+.status-badge.status-interest { background: #fff3cd; color: #856404; } /* ดอก - เหลือง */
+.status-badge.status-principal { background: #f8d7da; color: #721c24; } /* ต้น+ดอก - แดง */
+.status-badge.status-closed { background: #d4edda; color: #155724; } /* ปิดจบ - เขียว */
+
+/* สถานะเก่า (backward compatibility) */
 .status-badge.active, .status-badge.status-active { background: #fff3cd; color: #856404; }
 .status-badge.paid, .status-badge.status-paid { background: #d4edda; color: #155724; }
 .status-badge.overdue, .status-badge.status-overdue { background: #f8d7da; color: #721c24; }

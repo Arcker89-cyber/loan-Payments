@@ -307,9 +307,9 @@
             <!-- Bulk Actions Bar -->
             <div class="bulk-actions" id="bulkActions">
                 <span>เลือกแล้ว <span id="selectedCount">0</span> รายการ</span>
-                <button onclick="bulkChangeStatus('ชำระแล้ว')">✅ ชำระแล้ว</button>
-                <button onclick="bulkChangeStatus('ค้างชำระ')">⏳ ค้างชำระ</button>
-                <button onclick="bulkChangeStatus('เกินกำหนด')">⚠️ เกินกำหนด</button>
+                <button onclick="bulkChangeStatus('ดอก')">💰 ดอก</button>
+                <button onclick="bulkChangeStatus('ต้น+ดอก')">💵 ต้น+ดอก</button>
+                <button onclick="bulkChangeStatus('ปิดจบ')">✅ ปิดจบ</button>
                 <button onclick="bulkDelete()" style="background: rgba(220,53,69,0.8);">🗑️ ลบที่เลือก</button>
                 <button onclick="clearSelection()" style="margin-left: auto;">✖️ ยกเลิก</button>
             </div>
@@ -420,11 +420,9 @@
                     <div class="form-group">
                         <label for="status">สถานะ</label>
                         <select id="status">
-                            <option value="กำลังผ่อน" selected>กำลังผ่อน</option>
-                            <option value="ค้างชำระ">ค้างชำระ</option>
-                            <option value="เกินกำหนด">เกินกำหนด</option>
-                            <option value="คืนแล้ว">คืนแล้ว</option>
-                            <option value="ชำระแล้ว">ชำระแล้ว</option>
+                            <option value="ดอก" selected>ดอก</option>
+                            <option value="ต้น+ดอก">ต้น+ดอก</option>
+                            <option value="ปิดจบ">ปิดจบ</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -498,15 +496,16 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>สถานะ</th>
+                            <th>✓</th>
                             <th>ชื่อเล่น</th>
                             <th>ชื่อ-นามสกุล</th>
                             <th>วันที่กู้</th>
+                            <th>วันที่คืน</th>
                             <th>เงินต้น</th>
                             <th>อัตรา%</th>
                             <th>ดอกเบี้ย</th>
                             <th>ต้น+ดอก</th>
-                            <th>สถานะกู้</th>
+                            <th>สถานะ</th>
                         </tr>
                     </thead>
                     <tbody id="loanPreviewTableBody"></tbody>
