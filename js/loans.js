@@ -830,14 +830,17 @@ function processLoanFile(file) {
                 if (csvText.charCodeAt(0) === 0xFEFF) csvText = csvText.substring(1);
                 csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
                 
-                const workbook = XLSX.read(csvText, { type: 'string' });
+                const workbook = XLSX.read(csvText, { type: 'string', cellDates: true });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                // ใช้ raw: false เพื่อให้วันที่แสดงเป็น string
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' });
                 
+                console.log("📂 CSV Data sample:", jsonData.slice(0, 3));
                 parseLoanImportData(jsonData);
             } catch (error) {
-                showToast("ไม่สามารถอ่านไฟล์ CSV ได้", 'error');
+                console.error("CSV Error:", error);
+                showToast("ไม่สามารถอ่านไฟล์ CSV ได้: " + error.message, 'error');
             }
         };
         reader.readAsText(file, 'UTF-8');
@@ -845,14 +848,18 @@ function processLoanFile(file) {
         reader.onload = (e) => {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                // ใช้ cellDates: true เพื่อให้ SheetJS แปลงวันที่เป็น Date object
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                // ใช้ raw: false และ dateNF เพื่อแสดงวันที่เป็น string
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' });
                 
+                console.log("📂 Excel Data sample:", jsonData.slice(0, 3));
                 parseLoanImportData(jsonData);
             } catch (error) {
-                showToast("ไม่สามารถอ่านไฟล์ได้", 'error');
+                console.error("Excel Error:", error);
+                showToast("ไม่สามารถอ่านไฟล์ได้: " + error.message, 'error');
             }
         };
         reader.readAsArrayBuffer(file);
@@ -863,23 +870,30 @@ function parseLoanImportData(jsonData) {
     loanImportData = [];
     let validCount = 0, invalidCount = 0;
     
+    // Debug: แสดง column names ที่พบ
+    if (jsonData.length > 0) {
+        console.log("📋 Columns found:", Object.keys(jsonData[0]));
+        console.log("📋 First row data:", jsonData[0]);
+    }
+    
     const columnMap = {
-        nickname: ['Nickname', 'nickname', 'ชื่อเล่น'],
-        nameSurname: ['Name-Surname', 'nameSurname', 'ชื่อ-นามสกุล'],
-        loanDate: ['วันที่กู้', 'loanDate'],
-        returnDate: ['วันที่คืน', 'returnDate'],
-        principal: ['เงินต้น', 'principal'],
-        interestRate: ['ดอกเบี้ย(%)', 'interestRate', 'อัตราดอกเบี้ย'],
+        nickname: ['Nickname', 'nickname', 'ชื่อเล่น', 'ชื่อ'],
+        nameSurname: ['Name-Surname', 'nameSurname', 'ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'ชื่อ-สกุล'],
+        loanDate: ['วันที่กู้', 'loanDate', 'วันกู้', 'วันที่'],
+        returnDate: ['วันที่คืน', 'returnDate', 'วันคืน', 'กำหนดคืน'],
+        principal: ['เงินต้น', 'principal', 'ยอดกู้', 'จำนวนเงิน'],
+        interestRate: ['ดอกเบี้ย(%)', 'interestRate', 'อัตราดอกเบี้ย', 'อัตรา%', 'อัตรา', 'ประเภทดอกเบี้ย'],
         interest: ['ดอกเบี้ย', 'interest'],
+        interestType: ['ประเภทดอกเบี้ย', 'interestType'],
         status: ['สถานะ', 'status'],
-        summary: ['สรุป', 'summary'],
+        summary: ['สรุป', 'summary', 'หมายเหตุ'],
         documents: ['เอกสาร', 'documents']
     };
     
     function getValue(row, keys) {
         for (const key of keys) {
             if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
-                return String(row[key]).trim();
+                return row[key]; // ส่งค่าเดิม ไม่ต้อง convert เป็น String ก่อน
             }
         }
         return '';
@@ -892,16 +906,78 @@ function parseLoanImportData(jsonData) {
     
     function parseDate(val) {
         if (!val) return '';
-        if (typeof val === 'number') {
-            const date = new Date((val - 25569) * 86400 * 1000);
-            return date.toISOString().split('T')[0];
+        
+        // ถ้าเป็น Date object (จาก SheetJS cellDates: true)
+        if (val instanceof Date) {
+            const y = val.getFullYear();
+            const m = String(val.getMonth() + 1).padStart(2, '0');
+            const d = String(val.getDate()).padStart(2, '0');
+            console.log(`📅 Date object: ${val} → ${y}-${m}-${d}`);
+            return `${y}-${m}-${d}`;
         }
+        
+        // Excel serial number (เลขจำนวนเต็มหรือทศนิยม)
+        if (typeof val === 'number') {
+            // Excel serial date: วันที่ 1 = 1 Jan 1900
+            const date = new Date((val - 25569) * 86400 * 1000);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            console.log(`📅 Excel serial ${val} → ${y}-${m}-${d}`);
+            return `${y}-${m}-${d}`;
+        }
+        
         val = String(val).trim();
+        console.log(`📅 Parsing date string: "${val}"`);
+        
+        // รูปแบบ YYYY-MM-DD หรือ YYYY-M-D
         if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(val)) {
             const [y, m, d] = val.split('-');
             return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
         }
-        const parts = val.split(/[\/\-]/);
+        
+        // รูปแบบ YYYY/MM/DD หรือ YYYY/M/D
+        if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(val)) {
+            const [y, m, d] = val.split('/');
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+        
+        // รูปแบบ MM/DD/YYYY (American format - เช่น 12/1/2025)
+        // ตรวจสอบว่าตัวแรกคือเดือน (1-12)
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) {
+            const parts = val.split('/');
+            let [first, second, year] = parts;
+            year = parseInt(year);
+            
+            // ถ้า first > 12 แสดงว่าเป็น DD/MM/YYYY
+            // ถ้า first <= 12 และ second > 12 แสดงว่าเป็น MM/DD/YYYY
+            // ถ้าทั้งคู่ <= 12 ให้สมมติเป็น DD/MM/YYYY (แบบไทย)
+            let day, month;
+            
+            if (parseInt(first) > 12) {
+                // first > 12 ต้องเป็นวัน (DD/MM/YYYY)
+                day = first;
+                month = second;
+            } else if (parseInt(second) > 12) {
+                // second > 12 ต้องเป็นวัน (MM/DD/YYYY)
+                month = first;
+                day = second;
+            } else {
+                // ทั้งคู่ <= 12, สมมติเป็น DD/MM/YYYY (แบบไทย)
+                day = first;
+                month = second;
+            }
+            
+            if (year > 2500) year -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+            if (year < 100) year += 2000;
+            
+            const result = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            console.log(`📅 Parsed "${val}" → ${result} (day=${day}, month=${month}, year=${year})`);
+            return result;
+        }
+        
+        // รูปแบบ DD-MM-YYYY หรือ DD.MM.YYYY
+        const parts = val.split(/[\-\.]/);
         if (parts.length === 3) {
             let [day, month, year] = parts.map(p => p.trim());
             year = parseInt(year);
@@ -909,37 +985,65 @@ function parseLoanImportData(jsonData) {
             if (year < 100) year += 2000;
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
+        
+        console.log(`⚠️ Cannot parse date: "${val}"`);
         return '';
     }
     
-    jsonData.forEach(row => {
-        const nickname = getValue(row, columnMap.nickname);
-        const loanDate = parseDate(getValue(row, columnMap.loanDate));
+    // วันที่ปัจจุบันเป็น default
+    const today = new Date().toISOString().split('T')[0];
+    
+    jsonData.forEach((row, index) => {
+        const nickname = String(getValue(row, columnMap.nickname) || '').trim();
+        const rawLoanDate = getValue(row, columnMap.loanDate);
+        let loanDate = parseDate(rawLoanDate);
         const principal = parseNumber(getValue(row, columnMap.principal));
         
+        // Debug: แสดงค่าวันที่ดิบ
+        if (index < 5) {
+            console.log(`📝 Row ${index + 1}: rawLoanDate =`, rawLoanDate, `→ parsed =`, loanDate);
+        }
+        
+        // ✅ ถ้าไม่มีวันที่กู้ ให้ใช้วันที่ปัจจุบัน
+        if (!loanDate && nickname && principal > 0) {
+            loanDate = today;
+            console.log(`⚠️ Row ${index + 1}: ไม่มีวันที่กู้ - ใช้วันที่ปัจจุบัน (${today})`);
+        }
+        
         // อัตราดอกเบี้ย - ถ้าไม่ระบุใช้ 20% เป็น default
-        const interestRate = parseNumber(getValue(row, columnMap.interestRate)) || 20;
+        let interestRateVal = getValue(row, columnMap.interestRate);
+        // ถ้าเป็น string เช่น "15%" ให้ตัด % ออก
+        if (typeof interestRateVal === 'string') {
+            interestRateVal = interestRateVal.replace('%', '').trim();
+        }
+        const interestRate = parseNumber(interestRateVal) || 20;
         
         // ✅ คำนวณดอกเบี้ยอัตโนมัติเสมอจากสูตร: เงินต้น × อัตราดอกเบี้ย%
         const interest = principal * (interestRate / 100);
         
+        // ✅ ต้องมี nickname, loanDate และ principal > 0
         const isValid = nickname && loanDate && principal > 0;
         
         if (isValid) validCount++;
         else invalidCount++;
         
+        // Debug first 5 rows
+        if (index < 5) {
+            console.log(`📝 Row ${index + 1}:`, { nickname, loanDate, principal, interestRate, interest, isValid });
+        }
+        
         loanImportData.push({
             nickname, 
-            nameSurname: getValue(row, columnMap.nameSurname),
-            loanDate, 
+            nameSurname: String(getValue(row, columnMap.nameSurname) || '').trim(),
+            loanDate: loanDate || today, // ใช้วันที่ปัจจุบันถ้าไม่มี
             returnDate: parseDate(getValue(row, columnMap.returnDate)),
             principal, 
             interestRate,
             interest,
-            interestType: 'รายเดือน',
-            status: getValue(row, columnMap.status) || 'กำลังผ่อน',
-            summary: getValue(row, columnMap.summary),
-            documents: getValue(row, columnMap.documents),
+            interestType: String(getValue(row, columnMap.interestType) || '').trim() || 'รายเดือน',
+            status: String(getValue(row, columnMap.status) || '').trim() || 'กำลังผ่อน',
+            summary: String(getValue(row, columnMap.summary) || '').trim(),
+            documents: String(getValue(row, columnMap.documents) || '').trim(),
             isValid
         });
     });
@@ -962,15 +1066,18 @@ function renderLoanImportPreview() {
     const tbody = document.getElementById("loanPreviewTableBody");
     tbody.innerHTML = "";
     
+    const today = new Date().toISOString().split('T')[0];
+    
     loanImportData.slice(0, 50).forEach(item => {
         const total = item.principal + item.interest;
+        const isDefaultDate = item.loanDate === today && item._noOriginalDate;
         const row = document.createElement("tr");
         row.style.opacity = item.isValid ? "1" : "0.5";
         row.innerHTML = `
             <td>${item.isValid ? '✅' : '⚠️'}</td>
             <td>${item.nickname || '-'}</td>
             <td>${item.nameSurname || '-'}</td>
-            <td>${item.loanDate || '-'}</td>
+            <td style="${!item.loanDate ? 'color:#dc3545' : ''}">${item.loanDate || '(ใช้วันนี้)'}</td>
             <td style="text-align:right">${item.principal.toLocaleString()}</td>
             <td style="text-align:center;color:#28a745">${item.interestRate}%</td>
             <td style="text-align:right;color:#007bff">${item.interest.toLocaleString()}</td>
