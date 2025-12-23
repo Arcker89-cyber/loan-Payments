@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import ข้อมูลลูกค้า</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Sarabun', sans-serif; background: #f0f4f8; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        h1 { color: #333; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; margin: 5px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .progress { margin: 20px 0; }
+        .progress-bar { height: 30px; background: #e9ecef; border-radius: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #28a745, #1e7e34); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .log { background: #1e1e1e; color: #0f0; padding: 15px; border-radius: 8px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; }
+        .log .error { color: #ff6b6b; }
+        .log .success { color: #51cf66; }
+        .log .info { color: #74c0fc; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f8f9fa; }
+        .preview { max-height: 400px; overflow-y: auto; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-card h3 { margin: 0; font-size: 2rem; }
+        .stat-card p { margin: 5px 0 0; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📥 Import ข้อมูลลูกค้าเข้า Firebase</h1>
+
+        <div class="card">
+            <h3>⚠️ คำเตือน</h3>
+            <p>หน้านี้ใช้สำหรับ Import ข้อมูลลูกค้าเบื้องต้นเข้า Firebase เพียงครั้งเดียว</p>
+            <p>กรุณา Login ก่อน แล้วกดปุ่ม "เริ่ม Import" เพื่อนำข้อมูลเข้าระบบ</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="totalCount">77</h3>
+                <p>รายการทั้งหมด</p>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #1e7e34);">
+                <h3 id="successCount">0</h3>
+                <p>สำเร็จ</p>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                <h3 id="errorCount">0</h3>
+                <p>ผิดพลาด</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔐 สถานะ Login</h3>
+            <p id="authStatus">กำลังตรวจสอบ...</p>
+            <button class="btn btn-primary" onclick="window.location='index.html'">ไปหน้า Login</button>
+        </div>
+
+        <div class="card">
+            <h3>🚀 Import ข้อมูล</h3>
+            <button class="btn btn-success" id="importBtn" onclick="startImport()" disabled>เริ่ม Import</button>
+            <button class="btn btn-danger" onclick="clearAllCustomers()" disabled id="clearBtn">ลบข้อมูลเดิมทั้งหมด</button>
+            
+            <div class="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+                </div>
+            </div>
+            
+            <div class="log" id="log">
+                <div class="info">📋 พร้อม Import ข้อมูลลูกค้า 77 รายการ</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>👀 Preview ข้อมูล (10 รายการแรก)</h3>
+            <div class="preview">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ชื่อเล่น</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>เลขบัตร</th>
+                            <th>เบอร์โทร</th>
+                            <th>วันเกิด</th>
+                            <th>ที่อยู่</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase.js"></script>
+
+    <script>
+// ข้อมูลลูกค้าจาก Excel
+const customersData = [
+  {"nickname": "กิ๊ก", "nameSurname": "รัตติญา", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "กิ๊ก ร้านทองประตูน้ำ", "nameSurname": "อมรรัตน์ แสนป้อ", "idCard": "1409901241931", "telephone": "", "birthday": "1994-12-25", "address": "117 หมู่ 2 ต.โนนฆ้อง อ.บ้านฝาง จ.ขอนแก่น"},
+  {"nickname": "กี้", "nameSurname": "สุพัตรา ดำพิลัง", "idCard": "1409901548718", "telephone": "", "birthday": "1997-07-25", "address": "230 หมู่ที่ 9 ต.เมืองเก่า อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "กี้  ญ", "nameSurname": "กี้น้องที่เป้ยรู้จัก", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "กี้ ปราการ", "nameSurname": "ปราการ", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "แคท", "nameSurname": "จันทร์จิรา โคตรภัทร", "idCard": "1411600172681", "telephone": "0655535247", "birthday": "1993-09-13", "address": "439 หมู่ 4 ต.บ้านเป็ด อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "จ๋า", "nameSurname": "จณิษตา ปรีชา", "idCard": "1409901678115", "telephone": "", "birthday": "1998-01-06", "address": "172 หมู่ที่ 5 ต.ท่าพระ อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "เจ้ชุน", "nameSurname": "ชุนรักษ์ ส่งเสริม", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "แซ็ก", "nameSurname": "ประวิทย์ แก้วแสนเมือง", "idCard": "1440500136429", "telephone": "", "birthday": "1994-07-01", "address": "96 หมูที่ 11 กุดปลาดุก อ.ชื่นชม จ.มหาสารคาม"},
+  {"nickname": "ตวง", "nameSurname": "ตวงพร แสนบุตร", "idCard": "1409903122700", "telephone": "", "birthday": "2002-06-12", "address": "317 หมู่ที่ 13 ต.โคกสี อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "ตากล้อง น้องเป้ย", "nameSurname": "ปรัชชา พรมน้ำ", "idCard": "1409901057234", "telephone": "", "birthday": "1993-08-05", "address": "79 หมู่ที่ 9 ต.โพนทอง อ.เชียงยืน จ.มหาสารคาม"},
+  {"nickname": "ตุ้ย", "nameSurname": "ธีระพัฒน์ ลีทุม", "idCard": "0144050121869", "telephone": "", "birthday": "2000-10-18", "address": "154 หมู่ที่ 16 ต.เสือเท่า อ.เชียงยืน จ.มหาสารคาม"},
+  {"nickname": "แต๋ม", "nameSurname": "ทำงานที่บ้านไผ่", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "นกยูง", "nameSurname": "ศิริรัตน์ ประวรรณา", "idCard": "1440100121629", "telephone": "", "birthday": "1995-04-14", "address": "128 หมู่ที่ 1 ต.ท่าสองคอน อ.เมืองมหาสารคาม จ.มหาสารคาม"},
+  {"nickname": "น้องแหม่ม", "nameSurname": "นันท์นภัส นาบุรี", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "น้ำ", "nameSurname": "สุทธิดา เหล่าสุวรรณ์", "idCard": "1409901213716", "telephone": "0947066974", "birthday": "", "address": ""},
+  {"nickname": "น้ำฝน", "nameSurname": "ฐิติพร แซ่ม้า", "idCard": "5570900059288", "telephone": "", "birthday": "1992-06-21", "address": "164 ถ.กลางเมือง ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "น้ำเมย", "nameSurname": "นางสาววนารินทร์ ตรีศรี", "idCard": "1209700510502", "telephone": "0959987369", "birthday": "1993-11-25", "address": "7 หมู่ที่ 13 ต.แงเลิงจาน อ.เมืองมหาสารคาม จ.มหาสารคาม"},
+  {"nickname": "นิด พิซซ่า", "nameSurname": "รัชวดี พันวารี", "idCard": "1450900020665", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "นิ่ม", "nameSurname": "ทำงานพิซซ่า", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "นุ้ย", "nameSurname": "ธัญชนก ทรัพย์สิริกาญจน์", "idCard": "1409700141467", "telephone": "", "birthday": "1996-05-20", "address": "76 หมู่ที่ 9 ต.ป่าปอ อ.บ้านไผ่ จ.ขอนแก่น"},
+  {"nickname": "เนย", "nameSurname": "ชญานิศ สมบัติราช", "idCard": "1409901442863", "telephone": "", "birthday": "1996-06-29", "address": "12 หมู่ที่ 6 ต.บ้านหว้า ต.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "บี", "nameSurname": "สุนิสา พลทะจักร์", "idCard": "1409901181784", "telephone": "", "birthday": "1994-07-21", "address": "181 หมู่ที่ 7 ต.เมืองเก่า อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "บีท", "nameSurname": "สุพรรษา การนา", "idCard": "1461200161321", "telephone": "", "birthday": "1997-07-18", "address": "168 หมู่ที่ ต.เสาเล้า อ.หนองกรุงศรี จ.กาฬสินธุ์"},
+  {"nickname": "บีม", "nameSurname": "พิมพ์ชนก กำไรทำ", "idCard": "1409800252457", "telephone": "", "birthday": "1994-05-13", "address": "36 หมู่ที่ 1 ต.หนองไฟ่ล้อม อ.หนองสองห้อง จ.ขอนแก่น"},
+  {"nickname": "บีม บิ๊กวิง", "nameSurname": "ขายบิ๊กไบร์หน้าปากซอย", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "เบ้นซ์", "nameSurname": "ปัณณวัทร แก้วเชียงทอง", "idCard": "1449900383073", "telephone": "", "birthday": "1995-12-14", "address": "108 หมู่ที่ 3 ต.วังไชย อ.บรบือ จ.มหาสารคาม"},
+  {"nickname": "เบียร์", "nameSurname": "พัทยา พานทอง", "idCard": "1209600199023", "telephone": "", "birthday": "1996-09-22", "address": "22 หมู่ที่ 1 ต.กุดชุมแสง อ.หนองบัวแดง จ.ชัยภูมิ"},
+  {"nickname": "ปอ จานตี๋", "nameSurname": "ปอป้อ จานตี๋", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ปอย เพื่อนอาย", "nameSurname": "จันทร์จิราภรณ์ ต้นสีนนท์", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ปีใหม่(เพื่อนเป้ย)", "nameSurname": "เพื่อนที่เรียนมากับเป้ย", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "แป้ง", "nameSurname": "ศิริลักษณ์ วงคำซาว", "idCard": "1409900544361", "telephone": "", "birthday": "1989-05-03", "address": "78 หมู่ที่ 3 ต.พระลับ อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "ฝน", "nameSurname": "นภัสสร เนตพนา", "idCard": "1400700186055", "telephone": "", "birthday": "1995-07-04", "address": "158 หมู่ที่ 6 ต.กุดน้ำใส อ.น้ำพอง จ.ขอนแก่น"},
+  {"nickname": "ฝนญาติเป้ย", "nameSurname": "ณิชา", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ฝ้าย", "nameSurname": "จิราวรรณ วงค์กองแก้ว", "idCard": "1420200075092", "telephone": "", "birthday": "1995-03-10", "address": "20 หมู่ที่ 2 ต.ท่าสะอาด อ.นาด้วง จ.เลย"},
+  {"nickname": "พรไพลิน", "nameSurname": "พรไพลิน เวียงจันทร์", "idCard": "1401900084966", "telephone": "", "birthday": "1998-05-21", "address": "155 หมู่ที่ 5 ต.คำม่วง อ.เขาสวนกวาง จ.ขอนแก่น"},
+  {"nickname": "พี่แหม่ม", "nameSurname": "พรภิมล เอื้อเฟื้อ", "idCard": "1409900270295", "telephone": "", "birthday": "1986-08-21", "address": "125/3 หมู่ที่ 13 ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "พี่อร พิซซ่า", "nameSurname": "", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "เพียว SCB", "nameSurname": "ธนิพร ไชยชนะ", "idCard": "1409900547718", "telephone": "", "birthday": "1989-05-13", "address": ""},
+  {"nickname": "เพี่อนที่บ้าน", "nameSurname": "ไม่รู้ใครบอกจะส่งข้อมูลก็ไม่ส่ง", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ฟลุ๊กน้องเป้ย", "nameSurname": "แท่งทอง กุลวิเศษ", "idCard": "", "telephone": "", "birthday": "", "address": "บ้านเดียวกันกับเป้ย"},
+  {"nickname": "เฟิร์น", "nameSurname": "ใครไม่รู้", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "เฟิร์น", "nameSurname": "อรณิชา อัตถาภูมิ", "idCard": "1409901087524", "telephone": "", "birthday": "1993-10-17", "address": "560 ถ.หน้าเมือง ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "แฟนอิง", "nameSurname": "สุทธิพงศ์ ยงค์ปัชชา", "idCard": "1102002999390", "telephone": "", "birthday": "1999-01-13", "address": "500/2 หมู่ 4 ต.เมืองเก่า อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "มิ้ง", "nameSurname": "ธนารีย์พร มุ่งแฝงทรัพย์", "idCard": "1309931320262", "telephone": "", "birthday": "1996-09-04", "address": "23 หมู่ที่ 9 ต.ท่านางแนว อ.แวงน้อย จ.ขอนแก่น"},
+  {"nickname": "เมย์ (พิซซ่า)", "nameSurname": "อรอุมา บุญเสริฐ", "idCard": "1460200094399", "telephone": "", "birthday": "1998-06-09", "address": "150 หมู่ที่ 4 ต.หลักเหลี่ยม อ.นามน จ.กาฬสินธุ์"},
+  {"nickname": "เมียตำรวจ", "nameSurname": "วราภรณ์์ ข้อยุ่น", "idCard": "1409901380109", "telephone": "", "birthday": "1996-01-05", "address": "94 หมู่ที่ 4 ต.สำราญ อ.เมืองขอนแก่น จ.ขอนแก่น 40000"},
+  {"nickname": "ราม", "nameSurname": "ธนาวุฒิ คุยเพียภูมิ", "idCard": "1402000078740", "telephone": "", "birthday": "2000-04-23", "address": "78 หมู่ที่ 3 ต.ถูผาม่าน อ.ภูผาม่าน จ.ขอนแก่น"},
+  {"nickname": "สกุ๊ปปี้", "nameSurname": "น้องเป้ย สกุ๊ปปี้", "idCard": "", "telephone": "", "birthday": "", "address": "ไม่มีข้อมูล (เป้ยไม่ให้ข้อมูล)"},
+  {"nickname": "สุกฤษฎิ์", "nameSurname": "สุกฤษฎิ์ นุตยางกูล", "idCard": "1102700261426", "telephone": "", "birthday": "1993-04-22", "address": "36 หมู่ที่ 11 ต.ศรีสุข อ.กันทรวิชัย จ.มหาสารคาม"},
+  {"nickname": "หญิงนัด", "nameSurname": "ศิวิลัย สามารถ", "idCard": "1421300003922", "telephone": "", "birthday": "1996-12-28", "address": "45 หมู่ 4 ต.เอราวัณ อ.เอาาวัณ จ.เลย"},
+  {"nickname": "หญิง อิซุซุ", "nameSurname": "พรปภัทร คำนวนอินทร์", "idCard": "1449900326703", "telephone": "", "birthday": "1994-09-12", "address": "25 หมู่ที่ 3 ต.ห้วยแลง อ.เมืองสารคาม จ.มหาสารคาม"},
+  {"nickname": "หมิว", "nameSurname": "ลลิตา ชลพันธ์", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "หยก", "nameSurname": "ศิริรัตน์ ประวรรณา", "idCard": "", "telephone": "0953230871", "birthday": "", "address": "ไม่มีข้อมูล (เป้ยไม่ให้ข้อมูล)"},
+  {"nickname": "ออย พิซซ่า", "nameSurname": "นันทยา แก้วมุขดา", "idCard": "0143080072566", "telephone": "", "birthday": "1999-01-19", "address": "150 หมู่ที่ 9 ต.นางิ้ว อ.สังคม จ.หนองคาย"},
+  {"nickname": "อัม", "nameSurname": "ปนิตา บาดาจันทร์", "idCard": "1420900274900", "telephone": "", "birthday": "1996-03-06", "address": "31 หมู่ที่ 3 ต.หนองงิ้ว อ.วังสะพุง จ.เลย"},
+  {"nickname": "อาย", "nameSurname": "อาย", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "อาย ขายหวย", "nameSurname": "วราภรณ์ ข้อยุ่น", "idCard": "1409901380108", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "อิง", "nameSurname": "สุดารัตน์ ทองโคตร", "idCard": "1330900310761", "telephone": "", "birthday": "1998-07-06", "address": "35 หมู่ที่ 12 ต.โคกสูง อ.อุบลรัตน์ ข.ขอนแก่น"},
+  {"nickname": "อุ๋มอิ๋ม", "nameSurname": "สุภาวดี บุษฏา", "idCard": "1421100036363", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "อุ้ย", "nameSurname": "ภคพร โภคาพานิช", "idCard": "", "telephone": "", "birthday": "", "address": "ไม่ระบุ"},
+  {"nickname": "เอิร์ท", "nameSurname": "กรุณาพร โคตรลีวงษ์", "idCard": "1409901852887", "telephone": "", "birthday": "1999-10-12", "address": "164 ม.10 ต.บึงเนียม อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "แอม", "nameSurname": "นิภาพร พหลทัพ", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "โอ", "nameSurname": "วัชรพล จันทร์หนองแวง", "idCard": "1401300049744", "telephone": "", "birthday": "1992-07-27", "address": "72 หมู่ที่ 8 ต.ห้วยแก อ.ชนบท จ.ขอนแก่น"},
+  {"nickname": "โอภาส", "nameSurname": "โอภาส", "idCard": "", "telephone": "", "birthday": "", "address": "ไม่มีข้อมูล (เป้ยไม่ให้ข้อมูล)"},
+  {"nickname": "บอยทอม", "nameSurname": "พี่เป้ยแถวบ้าน", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "หนาว", "nameSurname": "ธนิกา เหล่าสุวรรณ", "idCard": "1409901382917", "telephone": "", "birthday": "1995-12-30", "address": "101 หมู่ที่ 2 ต.โนนท่อน อ.เมืองขอนแก่น จ.ขอนแก่น"},
+  {"nickname": "บิว", "nameSurname": "น.ส.เบญจวรรณ พิกุลทิพย์", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "อีฟ Toyota", "nameSurname": "น.ส.พรชนิตว์ ปัญญาสถาพร", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "บรีส SCB", "nameSurname": "นางสาวพรสุดา นาดี", "idCard": "1390400009205", "telephone": "", "birthday": "1494-06-03", "address": "41 หมู่ 4 ต.หินนางาม อ.ศรีบุญเรือง จ.หนองบัวลำภู"},
+  {"nickname": "ไอซ์", "nameSurname": "น้องเป้ย ที่แฟร์รี่", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "บุ๋ม รุ่นพี่เป้ย", "nameSurname": "น.ส.สุนิสา ปรีสว่าง", "idCard": "1461200121605", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "น้องที่แฟรี่", "nameSurname": "กุลธดา พลกุล", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "หยี", "nameSurname": "รุ่นพี่เป้ย", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ต้อง", "nameSurname": "ไม่มีข้อมูลเป้ยไม่ได้ส่งให้", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "ตอง พีชซ่า", "nameSurname": "พนิดาพร", "idCard": "", "telephone": "", "birthday": "", "address": ""},
+  {"nickname": "มาร์ค พิซซ่า", "nameSurname": "นายวงศธร ทูลธรรม", "idCard": "", "telephone": "", "birthday": "", "address": ""}
+];
+
+let successCount = 0;
+let errorCount = 0;
+
+// Render preview table
+function renderPreview() {
+    const tbody = document.getElementById('previewTable');
+    tbody.innerHTML = customersData.slice(0, 10).map((c, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${c.nickname}</td>
+            <td>${c.nameSurname || '-'}</td>
+            <td>${c.idCard ? c.idCard.substring(0, 4) + '...' : '-'}</td>
+            <td>${c.telephone || '-'}</td>
+            <td>${c.birthday || '-'}</td>
+            <td>${c.address ? c.address.substring(0, 30) + '...' : '-'}</td>
+        </tr>
+    `).join('');
+}
+
+// Log message
+function log(message, type = '') {
+    const logDiv = document.getElementById('log');
+    const div = document.createElement('div');
+    div.className = type;
+    div.textContent = message;
+    logDiv.appendChild(div);
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+// Update progress
+function updateProgress(current, total) {
+    const percent = Math.round((current / total) * 100);
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressFill').textContent = percent + '%';
+}
+
+// Start import
+async function startImport() {
+    const btn = document.getElementById('importBtn');
+    btn.disabled = true;
+    
+    successCount = 0;
+    errorCount = 0;
+    
+    log('🚀 เริ่มต้น Import ข้อมูล...', 'info');
+    
+    for (let i = 0; i < customersData.length; i++) {
+        const customer = customersData[i];
+        
+        try {
+            await db.collection('customers').add({
+                ...customer,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            successCount++;
+            log(`✅ ${i + 1}. ${customer.nickname} - สำเร็จ`, 'success');
+            
+        } catch (error) {
+            errorCount++;
+            log(`❌ ${i + 1}. ${customer.nickname} - ผิดพลาด: ${error.message}`, 'error');
+        }
+        
+        updateProgress(i + 1, customersData.length);
+        document.getElementById('successCount').textContent = successCount;
+        document.getElementById('errorCount').textContent = errorCount;
+        
+        // Small delay to avoid overwhelming Firebase
+        await new Promise(r => setTimeout(r, 100));
+    }
+    
+    log('', '');
+    log(`🎉 Import เสร็จสิ้น! สำเร็จ ${successCount} รายการ, ผิดพลาด ${errorCount} รายการ`, 'info');
+    
+    btn.disabled = false;
+}
+
+// Clear all customers
+async function clearAllCustomers() {
+    if (!confirm('⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลลูกค้าทั้งหมด?')) return;
+    if (!confirm('⚠️⚠️ ยืนยันอีกครั้ง - ข้อมูลจะถูกลบถาวร!')) return;
+    
+    log('🗑️ กำลังลบข้อมูลเดิม...', 'info');
+    
+    try {
+        const snapshot = await db.collection('customers').get();
+        const batch = db.batch();
+        
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+        log(`✅ ลบข้อมูล ${snapshot.size} รายการเรียบร้อย`, 'success');
+        
+    } catch (error) {
+        log(`❌ ลบข้อมูลผิดพลาด: ${error.message}`, 'error');
+    }
+}
+
+// Auth check
+firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById('authStatus').innerHTML = `✅ Login แล้ว: <strong>${user.email}</strong>`;
+        document.getElementById('importBtn').disabled = false;
+        document.getElementById('clearBtn').disabled = false;
+    } else {
+        document.getElementById('authStatus').innerHTML = '❌ ยังไม่ได้ Login - กรุณา Login ก่อน';
+        document.getElementById('importBtn').disabled = true;
+        document.getElementById('clearBtn').disabled = true;
+    }
+});
+
+// Init
+renderPreview();
+    </script>
+</body>
+</html>
