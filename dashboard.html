@@ -4,18 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการเงินกู้ | แดชบอร์ด</title>
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .text-right { text-align: right; }
+    </style>
 </head>
 <body>
-
     <div class="container">
         <!-- Header -->
         <header>
@@ -30,35 +26,42 @@
         <nav class="nav-menu">
             <a href="dashboard.html" class="nav-link active">📊 แดชบอร์ด</a>
             <a href="customers.html" class="nav-link">👥 จัดการลูกค้า</a>
+            <a href="history.html" class="nav-link">📅 ประวัติรายเดือน</a>
         </nav>
 
-        <!-- Filter Section -->
+        <!-- Month Filter -->
         <div class="filter-section">
-            <label>ตั้งแต่:</label>
-            <input type="date" id="startDate">
-            <label>ถึง:</label>
-            <input type="date" id="endDate">
-            <button class="btn-primary" onclick="applyFilter()">🔍 กรองข้อมูล</button>
-            <button class="btn-outline" onclick="resetFilter()">🔄 รีเซ็ต</button>
+            <label>📅 เลือกเดือน:</label>
+            <select id="monthSelect" onchange="filterByMonth()"></select>
+            <select id="yearSelect" onchange="filterByMonth()"></select>
+            <span class="month-display" id="currentMonthDisplay">-</span>
         </div>
 
         <!-- Summary Cards -->
         <div class="cards-grid">
             <div class="card blue">
-                <h4>💰 ยอดเงินกู้ทั้งหมด</h4>
+                <h4>💰 ยอดเงินต้น</h4>
                 <p id="totalLoans">0 ฿</p>
             </div>
             <div class="card yellow">
                 <h4>📈 ดอกเบี้ยรวม</h4>
                 <p id="totalInterest">0 ฿</p>
             </div>
+            <div class="card purple">
+                <h4>💵 ต้น + ดอก</h4>
+                <p id="totalSum">0 ฿</p>
+            </div>
             <div class="card green">
-                <h4>✅ ยอดชำระแล้ว</h4>
+                <h4>✅ ชำระแล้ว</h4>
                 <p id="paidAmount">0 ฿</p>
             </div>
             <div class="card red">
-                <h4>📋 รายการที่ยังค้าง</h4>
-                <p id="activeLoans">0 รายการ</p>
+                <h4>⏳ ยังค้าง</h4>
+                <p id="activeLoans">0</p>
+            </div>
+            <div class="card teal">
+                <h4>📋 รายการทั้งหมด</h4>
+                <p id="loanCount">0</p>
             </div>
         </div>
 
@@ -70,10 +73,10 @@
         <!-- Loan Table -->
         <div class="table-section">
             <div class="table-header">
-                <h3>📋 รายการเงินกู้</h3>
+                <h3>📋 รายการเงินกู้ประจำเดือน</h3>
                 <div class="table-actions">
-                    <button class="btn-export" onclick="exportToCSV()">📥 Export CSV</button>
-                    <button class="btn-add" onclick="openModal()">➕ เพิ่มรายการใหม่</button>
+                    <button class="btn-excel" onclick="exportToExcel()">📥 Export Excel</button>
+                    <button class="btn-add" onclick="openModal()">➕ เพิ่มรายการ</button>
                 </div>
             </div>
             
@@ -82,27 +85,21 @@
                     <thead>
                         <tr>
                             <th>No.</th>
-                            <th>Nickname</th>
-                            <th>Name - Surname</th>
-                            <th>ID Card</th>
-                            <th>Telephone</th>
-                            <th>Birthday</th>
-                            <th>Addresses</th>
+                            <th>ชื่อเล่น</th>
+                            <th>ชื่อ-นามสกุล</th>
                             <th>วันที่กู้</th>
                             <th>วันที่คืน</th>
                             <th>เงินต้น</th>
                             <th>ประเภทดอกเบี้ย</th>
                             <th>ดอกเบี้ย</th>
                             <th>ต้น + ดอก</th>
-                            <th>สรุป</th>
-                            <th>สถานะการกู้</th>
-                            <th>เอกสาร</th>
+                            <th>สถานะ</th>
                             <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="loanTableBody">
                         <tr>
-                            <td colspan="17" style="text-align: center; padding: 30px; color: #999;">
+                            <td colspan="11" style="text-align: center; padding: 30px; color: #999;">
                                 กำลังโหลดข้อมูล...
                             </td>
                         </tr>
@@ -119,50 +116,28 @@
             <h2 id="modalTitle">เพิ่มข้อมูลเงินกู้ใหม่</h2>
             
             <form id="loanForm">
-                <!-- ข้อมูลผู้กู้ -->
+                <input type="hidden" id="customerId">
+                
                 <h4 style="color: #007bff; margin-bottom: 15px;">👤 ข้อมูลผู้กู้</h4>
                 
                 <div class="form-group">
                     <label for="customerSelect">เลือกลูกค้าจากระบบ</label>
                     <select id="customerSelect" onchange="fillCustomerData()">
-                        <option value="">-- เลือกลูกค้า หรือ กรอกข้อมูลใหม่ --</option>
+                        <option value="">-- เลือกลูกค้า หรือ กรอกใหม่ --</option>
                     </select>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="nickname">Nickname *</label>
+                        <label for="nickname">ชื่อเล่น *</label>
                         <input type="text" id="nickname" required>
                     </div>
                     <div class="form-group">
-                        <label for="nameSurname">Name - Surname *</label>
+                        <label for="nameSurname">ชื่อ-นามสกุล *</label>
                         <input type="text" id="nameSurname" required>
                     </div>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="idCard">ID Card</label>
-                        <input type="text" id="idCard" maxlength="13" placeholder="1234567890123">
-                    </div>
-                    <div class="form-group">
-                        <label for="telephone">Telephone</label>
-                        <input type="tel" id="telephone" placeholder="0812345678">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="birthday">Birthday</label>
-                        <input type="date" id="birthday">
-                    </div>
-                    <div class="form-group">
-                        <label for="address">Addresses</label>
-                        <input type="text" id="address" placeholder="บ้านเลขที่, ตำบล, อำเภอ, จังหวัด">
-                    </div>
-                </div>
-                
-                <!-- ข้อมูลเงินกู้ -->
                 <h4 style="color: #28a745; margin: 20px 0 15px 0;">💰 ข้อมูลเงินกู้</h4>
                 
                 <div class="form-row">
@@ -198,7 +173,7 @@
                         <input type="number" id="interest" min="0" step="0.01" placeholder="0.00">
                     </div>
                     <div class="form-group">
-                        <label for="status">สถานะการกู้</label>
+                        <label for="status">สถานะ</label>
                         <select id="status">
                             <option value="กำลังผ่อน" selected>กำลังผ่อน</option>
                             <option value="ค้างชำระ">ค้างชำระ</option>
@@ -212,11 +187,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="summary">สรุป/หมายเหตุ</label>
-                        <textarea id="summary" rows="2" placeholder="สรุปรายละเอียดเพิ่มเติม..."></textarea>
+                        <textarea id="summary" rows="2" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="documents">เอกสาร/หลักฐาน</label>
-                        <input type="text" id="documents" placeholder="ระบุเอกสารที่เกี่ยวข้อง">
+                        <label for="documents">เอกสาร</label>
+                        <input type="text" id="documents" placeholder="เอกสารที่เกี่ยวข้อง">
                     </div>
                 </div>
                 
@@ -225,15 +200,20 @@
         </div>
     </div>
 
-    <!-- ================= FIREBASE SDK (COMPAT) ================= -->
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content modal-detail">
+            <span class="close" onclick="closeDetailModal()">&times;</span>
+            <h2>📋 รายละเอียดเงินกู้</h2>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-    <!-- ================= YOUR JS ================= -->
     <script src="js/firebase.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/loans.js"></script>
-
 </body>
 </html>

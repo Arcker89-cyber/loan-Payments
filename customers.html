@@ -4,15 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการเงินกู้ | จัดการลูกค้า</title>
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
     <div class="container">
         <!-- Header -->
         <header>
@@ -27,9 +22,10 @@
         <nav class="nav-menu">
             <a href="dashboard.html" class="nav-link">📊 แดชบอร์ด</a>
             <a href="customers.html" class="nav-link active">👥 จัดการลูกค้า</a>
+            <a href="history.html" class="nav-link">📅 ประวัติรายเดือน</a>
         </nav>
 
-        <!-- Summary Card -->
+        <!-- Summary -->
         <div class="cards-grid">
             <div class="card purple">
                 <h4>👥 จำนวนลูกค้าทั้งหมด</h4>
@@ -42,17 +38,15 @@
             <div class="table-header">
                 <h3>📋 รายชื่อลูกค้า</h3>
                 <div class="table-actions">
-                    <button class="btn-export" onclick="exportCustomersToCSV()">📥 Export CSV</button>
+                    <button class="btn-excel" onclick="exportCustomersToExcel()">📥 Export Excel</button>
                     <button class="btn-add" onclick="openCustomerModal()">➕ เพิ่มลูกค้าใหม่</button>
                 </div>
             </div>
 
-            <!-- Search -->
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="🔍 ค้นหาลูกค้า (ชื่อ, เลขบัตร, เบอร์โทร...)" oninput="searchCustomers()">
             </div>
 
-            <!-- Customer Cards -->
             <div id="customerList" class="customer-cards">
                 <div class="empty-state">
                     <h3>กำลังโหลดข้อมูล...</h3>
@@ -70,33 +64,33 @@
             <form id="customerForm">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="custNickname">Nickname *</label>
+                        <label for="custNickname">ชื่อเล่น *</label>
                         <input type="text" id="custNickname" required placeholder="ชื่อเล่น">
                     </div>
                     <div class="form-group">
-                        <label for="custNameSurname">Name - Surname *</label>
+                        <label for="custNameSurname">ชื่อ-นามสกุล *</label>
                         <input type="text" id="custNameSurname" required placeholder="ชื่อ-นามสกุล">
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="custIdCard">ID Card</label>
+                        <label for="custIdCard">เลขบัตรประชาชน</label>
                         <input type="text" id="custIdCard" maxlength="13" placeholder="1234567890123">
                     </div>
                     <div class="form-group">
-                        <label for="custTelephone">Telephone</label>
+                        <label for="custTelephone">เบอร์โทรศัพท์</label>
                         <input type="tel" id="custTelephone" placeholder="0812345678">
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="custBirthday">Birthday</label>
+                        <label for="custBirthday">วันเกิด</label>
                         <input type="date" id="custBirthday">
                     </div>
                     <div class="form-group">
-                        <label for="custAddress">Addresses</label>
+                        <label for="custAddress">ที่อยู่</label>
                         <input type="text" id="custAddress" placeholder="ที่อยู่">
                     </div>
                 </div>
@@ -106,15 +100,11 @@
         </div>
     </div>
 
-    <!-- ================= FIREBASE SDK (COMPAT) ================= -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-    <!-- ================= YOUR JS ================= -->
     <script src="js/firebase.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/customers.js"></script>
-
 </body>
 </html>

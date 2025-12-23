@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเงินกู้ | ประวัติรายเดือน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .text-right { text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📅 ประวัติรายเดือน</h1>
+            <div class="user-info">
+                <span id="userEmail">กำลังโหลด...</span>
+                <button class="btn-logout" onclick="logout()">ออกจากระบบ</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-link">📊 แดชบอร์ด</a>
+            <a href="customers.html" class="nav-link">👥 จัดการลูกค้า</a>
+            <a href="history.html" class="nav-link active">📅 ประวัติรายเดือน</a>
+        </nav>
+
+        <!-- Grand Total Cards -->
+        <div class="cards-grid">
+            <div class="card blue">
+                <h4>💰 รวมเงินต้นทั้งหมด</h4>
+                <p id="grandTotalPrincipal">0 ฿</p>
+            </div>
+            <div class="card yellow">
+                <h4>📈 รวมดอกเบี้ยทั้งหมด</h4>
+                <p id="grandTotalInterest">0 ฿</p>
+            </div>
+            <div class="card purple">
+                <h4>💵 รวมทั้งสิ้น</h4>
+                <p id="grandTotalSum">0 ฿</p>
+            </div>
+            <div class="card teal">
+                <h4>📋 รายการทั้งหมด</h4>
+                <p id="grandTotalCount">0</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>📅 ข้อมูลแยกตามเดือน</h3>
+                <div class="table-actions">
+                    <button class="btn-excel" onclick="exportAllToExcel()">📥 Export ทั้งหมด</button>
+                </div>
+            </div>
+
+            <p style="color: #666; margin-bottom: 15px;">คลิกที่การ์ดเพื่อดูรายละเอียดและ Export ข้อมูลของเดือนนั้น</p>
+
+            <div id="historyGrid" class="history-grid">
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <h3>กำลังโหลดข้อมูล...</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month Detail Modal -->
+    <div id="monthDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close" onclick="closeMonthDetailModal()">&times;</span>
+            <h2 id="monthDetailTitle">รายละเอียดเดือน</h2>
+            <div id="monthDetailContent"></div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>
