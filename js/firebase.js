@@ -8,7 +8,7 @@ const firebaseConfig = {
     appId: "1:989223042934:web:5f13e17eadea1000b88457"
 };
 
-// Initialize Firebase (ป้องกันการ init ซ้ำ)
+// Initialize Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }

@@ -1,10 +1,8 @@
 // ============ CUSTOMER MANAGEMENT ============
 console.log("✅ customers.js loaded");
 
-// Global Variables
 let allCustomers = [];
 
-// DOM Elements
 const customerModal = document.getElementById("customerModal");
 const customerForm = document.getElementById("customerForm");
 const customerList = document.getElementById("customerList");
@@ -23,11 +21,8 @@ function closeCustomerModal() {
     delete customerForm.dataset.editId;
 }
 
-// Close modal when clicking outside
 window.onclick = (e) => {
-    if (e.target === customerModal) {
-        closeCustomerModal();
-    }
+    if (e.target === customerModal) closeCustomerModal();
 };
 
 // ============ LOAD CUSTOMERS ============
@@ -41,7 +36,7 @@ async function loadCustomerList() {
         });
 
         renderCustomers(allCustomers);
-        updateCustomerCount();
+        document.getElementById("customerCount").textContent = allCustomers.length;
 
         console.log("✅ Customers loaded:", allCustomers.length);
 
@@ -71,11 +66,12 @@ function renderCustomers(customers) {
         card.innerHTML = `
             <h4>👤 ${customer.nickname || 'ไม่ระบุชื่อเล่น'}</h4>
             <p><strong>ชื่อ-นามสกุล:</strong> ${customer.nameSurname || '-'}</p>
-            <p><strong>เลขบัตร:</strong> ${customer.idCard || '-'}</p>
+            <p><strong>เลขบัตร:</strong> ${maskIdCard(customer.idCard)}</p>
             <p><strong>โทรศัพท์:</strong> ${customer.telephone || '-'}</p>
-            <p><strong>วันเกิด:</strong> ${customer.birthday || '-'}</p>
-            <p><strong>ที่อยู่:</strong> ${truncateText(customer.address, 50) || '-'}</p>
+            <p><strong>วันเกิด:</strong> ${formatDateThai(customer.birthday)}</p>
+            <p><strong>ที่อยู่:</strong> ${truncateText(customer.address, 40) || '-'}</p>
             <div class="card-actions">
+                <button class="btn-action btn-detail" onclick="viewCustomerHistory('${customer.id}')">📊 ประวัติ</button>
                 <button class="btn-action btn-edit" onclick="editCustomer('${customer.id}')">✏️ แก้ไข</button>
                 <button class="btn-action btn-delete" onclick="deleteCustomer('${customer.id}')">🗑️ ลบ</button>
             </div>
@@ -84,21 +80,24 @@ function renderCustomers(customers) {
     });
 }
 
-// Helper: Truncate text
+function maskIdCard(idCard) {
+    if (!idCard) return '-';
+    if (idCard.length !== 13) return idCard;
+    return idCard.substring(0, 4) + '-XXXXX-' + idCard.substring(9);
+}
+
+function formatDateThai(dateStr) {
+    if (!dateStr) return '-';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${parseInt(year) + 543}`;
+}
+
 function truncateText(str, maxLength) {
     if (!str) return '';
     return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
 }
 
-// Update customer count
-function updateCustomerCount() {
-    const countEl = document.getElementById("customerCount");
-    if (countEl) {
-        countEl.textContent = allCustomers.length;
-    }
-}
-
-// ============ SEARCH CUSTOMERS ============
+// ============ SEARCH ============
 function searchCustomers() {
     const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
     
@@ -117,8 +116,60 @@ function searchCustomers() {
     renderCustomers(filtered);
 }
 
-// ============ CRUD OPERATIONS ============
-// Add/Update Customer
+// ============ VIEW CUSTOMER HISTORY ============
+async function viewCustomerHistory(customerId) {
+    const customer = allCustomers.find(c => c.id === customerId);
+    if (!customer) return;
+
+    try {
+        // Get all loans for this customer
+        const snapshot = await db.collection("loans")
+            .where("customerId", "==", customerId)
+            .orderBy("loanDate", "desc")
+            .get();
+
+        let loans = [];
+        let totalPrincipal = 0;
+        let totalInterest = 0;
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            loans.push(data);
+            totalPrincipal += parseFloat(data.principal) || 0;
+            totalInterest += parseFloat(data.interest) || 0;
+        });
+
+        let historyHtml = '';
+        if (loans.length > 0) {
+            historyHtml = loans.map((loan, i) => `
+                <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 8px;">
+                    <strong>${i + 1}. ${formatDateThai(loan.loanDate)}</strong><br>
+                    เงินต้น: ${parseFloat(loan.principal || 0).toLocaleString()} ฿ | 
+                    ดอกเบี้ย: ${parseFloat(loan.interest || 0).toLocaleString()} ฿ |
+                    สถานะ: ${loan.status || '-'}
+                </div>
+            `).join('');
+        } else {
+            historyHtml = '<p style="color: #999; text-align: center;">ยังไม่มีประวัติการกู้</p>';
+        }
+
+        alert(`
+📊 ประวัติการกู้ของ ${customer.nickname}
+
+ชื่อ: ${customer.nameSurname}
+รวมจำนวนครั้งที่กู้: ${loans.length} ครั้ง
+รวมเงินต้นทั้งหมด: ${totalPrincipal.toLocaleString()} บาท
+รวมดอกเบี้ยทั้งหมด: ${totalInterest.toLocaleString()} บาท
+รวมทั้งสิ้น: ${(totalPrincipal + totalInterest).toLocaleString()} บาท
+        `.trim());
+
+    } catch (error) {
+        console.error("Error loading history:", error);
+        alert("ไม่สามารถโหลดประวัติได้");
+    }
+}
+
+// ============ CRUD ============
 customerForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     
@@ -140,15 +191,11 @@ customerForm.addEventListener("submit", async (e) => {
         const editId = customerForm.dataset.editId;
         
         if (editId) {
-            // Update existing
             await db.collection("customers").doc(editId).update(customerData);
-            console.log("✅ Updated customer:", editId);
             alert("อัปเดตข้อมูลลูกค้าเรียบร้อยแล้ว!");
         } else {
-            // Add new
             customerData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             await db.collection("customers").add(customerData);
-            console.log("✅ Added new customer");
             alert("เพิ่มลูกค้าใหม่เรียบร้อยแล้ว!");
         }
 
@@ -164,12 +211,10 @@ customerForm.addEventListener("submit", async (e) => {
     }
 });
 
-// Edit Customer
 function editCustomer(id) {
     const customer = allCustomers.find(c => c.id === id);
     if (!customer) return;
 
-    // Fill form with existing data
     document.getElementById("custNickname").value = customer.nickname || '';
     document.getElementById("custNameSurname").value = customer.nameSurname || '';
     document.getElementById("custIdCard").value = customer.idCard || '';
@@ -177,81 +222,53 @@ function editCustomer(id) {
     document.getElementById("custBirthday").value = customer.birthday || '';
     document.getElementById("custAddress").value = customer.address || '';
 
-    // Set edit mode
     customerForm.dataset.editId = id;
     document.getElementById("customerModalTitle").textContent = "แก้ไขข้อมูลลูกค้า";
     customerModal.style.display = "block";
 }
 
-// Delete Customer
 async function deleteCustomer(id) {
     const customer = allCustomers.find(c => c.id === id);
     if (!customer) return;
 
-    if (!confirm(`คุณต้องการลบลูกค้า "${customer.nickname || customer.nameSurname}" หรือไม่?`)) return;
+    if (!confirm(`คุณต้องการลบลูกค้า "${customer.nickname}" หรือไม่?`)) return;
 
     try {
         await db.collection("customers").doc(id).delete();
-        console.log("✅ Deleted customer:", id);
         alert("ลบข้อมูลลูกค้าเรียบร้อยแล้ว!");
         loadCustomerList();
     } catch (error) {
-        console.error("❌ Delete error:", error);
         alert("เกิดข้อผิดพลาด: " + error.message);
     }
 }
 
-// ============ EXPORT CUSTOMERS TO CSV ============
-function exportCustomersToCSV() {
+// ============ EXPORT ============
+function exportCustomersToExcel() {
     if (allCustomers.length === 0) {
         alert("ไม่มีข้อมูลลูกค้าให้ Export");
         return;
     }
 
-    // CSV Headers
-    const headers = [
-        "No.",
-        "Nickname",
-        "Name - Surname",
-        "ID Card",
-        "Telephone",
-        "Birthday",
-        "Address"
-    ];
+    const headers = ["No.", "Nickname", "Name-Surname", "ID Card", "Telephone", "Birthday", "Address"];
+    const rows = allCustomers.map((c, i) => [
+        i + 1,
+        c.nickname || '',
+        c.nameSurname || '',
+        c.idCard || '',
+        c.telephone || '',
+        c.birthday || '',
+        c.address || ''
+    ].map(escapeCSV).join(','));
 
-    // CSV Rows
-    const rows = allCustomers.map((customer, index) => {
-        return [
-            index + 1,
-            escapeCSV(customer.nickname || ''),
-            escapeCSV(customer.nameSurname || ''),
-            escapeCSV(customer.idCard || ''),
-            escapeCSV(customer.telephone || ''),
-            escapeCSV(customer.birthday || ''),
-            escapeCSV(customer.address || '')
-        ].join(',');
-    });
-
-    // Combine headers and rows
     const csvContent = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
-    
-    // Create download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
     
-    link.setAttribute('href', url);
-    link.setAttribute('download', `customers_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    document.body.removeChild(link);
-
-    console.log("✅ Customers CSV exported successfully");
 }
 
-// Helper: Escape CSV special characters
 function escapeCSV(str) {
     if (str === null || str === undefined) return '';
     str = String(str);
@@ -264,11 +281,9 @@ function escapeCSV(str) {
 // ============ AUTH CHECK ============
 firebase.auth().onAuthStateChanged(user => {
     if (user) {
-        console.log("👤 Logged in as:", user.email);
         document.getElementById("userEmail").textContent = user.email;
         loadCustomerList();
     } else {
-        console.log("❌ Not logged in, redirecting...");
         window.location.href = "index.html";
     }
 });

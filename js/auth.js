@@ -1,22 +1,18 @@
 // ============ AUTH FUNCTIONS ============
 
-// Login Function
 function login() {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const errorMsg = document.getElementById("errorMsg");
     const loginBtn = document.querySelector(".login-container button");
 
-    // Clear previous error
     errorMsg.textContent = "";
 
-    // Validation
     if (!email || !password) {
         errorMsg.textContent = "กรุณากรอกอีเมลและรหัสผ่าน";
         return;
     }
 
-    // Disable button while processing
     loginBtn.disabled = true;
     loginBtn.textContent = "กำลังเข้าสู่ระบบ...";
 
@@ -27,8 +23,6 @@ function login() {
         })
         .catch((error) => {
             console.error("❌ Login error:", error);
-            
-            // แปลง error message เป็นภาษาไทย
             switch(error.code) {
                 case 'auth/user-not-found':
                     errorMsg.textContent = "ไม่พบผู้ใช้งานนี้ในระบบ";
@@ -52,7 +46,6 @@ function login() {
         });
 }
 
-// Logout Function
 function logout() {
     auth.signOut()
         .then(() => {
@@ -65,23 +58,19 @@ function logout() {
         });
 }
 
-// Allow login with Enter key
+// Enter key support
 document.addEventListener("DOMContentLoaded", function() {
     const passwordInput = document.getElementById("password");
     if (passwordInput) {
         passwordInput.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") {
-                login();
-            }
+            if (e.key === "Enter") login();
         });
     }
     
     const emailInput = document.getElementById("email");
     if (emailInput) {
         emailInput.addEventListener("keypress", function(e) {
-            if (e.key === "Enter") {
-                document.getElementById("password").focus();
-            }
+            if (e.key === "Enter") document.getElementById("password").focus();
         });
     }
 });
