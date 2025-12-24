@@ -254,11 +254,12 @@
         <!-- Month Filter - Compact -->
         <div class="filter-section-compact">
             <div class="filter-row-controls">
-                <span class="filter-label">📅</span>
                 <select id="monthSelect" onchange="filterByMonth()"></select>
                 <select id="yearSelect" onchange="filterByMonth()"></select>
-                <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
-                <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
+                <div class="filter-buttons">
+                    <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
+                    <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
+                </div>
             </div>
             <div class="month-display-wrapper">
                 <span class="month-display" id="currentMonthDisplay">-</span>
