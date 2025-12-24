@@ -3,6 +3,7 @@ console.log("✅ loans.js loaded");
 
 // Global Variables
 let loanChart = null;
+let statusLineChart = null; // กราฟเส้นแสดงสถานะรายเดือน
 let allLoans = [];
 let filteredLoans = []; // เก็บข้อมูลที่ filter แล้ว
 let allCustomers = [];
@@ -17,6 +18,8 @@ let currentSort = { field: 'loanDate', direction: 'asc' }; // default: เรี
 // Thai Month Names
 const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                     'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const thaiMonthsShort = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                        'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 // DOM Elements
 const loanModal = document.getElementById("loanModal");
@@ -142,6 +145,11 @@ function initMonthSelector() {
     const monthSelect = document.getElementById("monthSelect");
     const yearSelect = document.getElementById("yearSelect");
     
+    // ใช้วันที่ปัจจุบัน (อัพเดทอัตโนมัติ)
+    const now = new Date();
+    currentMonth = now.getMonth() + 1;
+    currentYear = now.getFullYear();
+    
     for (let i = 1; i <= 12; i++) {
         const option = document.createElement("option");
         option.value = i;
@@ -150,8 +158,9 @@ function initMonthSelector() {
         monthSelect.appendChild(option);
     }
     
-    const thisYear = new Date().getFullYear();
-    for (let y = thisYear; y >= thisYear - 5; y--) {
+    // เพิ่มปีย้อนหลัง 5 ปี และปีถัดไป 1 ปี
+    const thisYear = now.getFullYear();
+    for (let y = thisYear + 1; y >= thisYear - 5; y--) {
         const option = document.createElement("option");
         option.value = y;
         option.textContent = y + 543;
@@ -808,30 +817,41 @@ function viewLoanDetail(id) {
 
 // ============ CHART ============
 function renderChart() {
-    const ctx = document.getElementById('loanChart').getContext('2d');
+    const ctx = document.getElementById('loanChart');
+    if (!ctx) return;
     
     if (loanChart) {
         loanChart.destroy();
     }
 
     // Group by status
-    const statusCount = {};
+    const statusCount = {
+        'ว่าง': 0,
+        'ดอก': 0,
+        'ต้น+ดอก': 0,
+        'ปิดจบ': 0
+    };
+    
     allLoans.forEach(loan => {
-        const status = loan.status || 'ไม่ระบุ';
-        statusCount[status] = (statusCount[status] || 0) + 1;
+        const status = loan.status || 'ว่าง';
+        if (statusCount[status] !== undefined) {
+            statusCount[status]++;
+        } else {
+            statusCount['ว่าง']++;
+        }
     });
 
     const labels = Object.keys(statusCount);
     const data = Object.values(statusCount);
-    const colors = ['#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6c757d'];
+    const colors = ['#6c757d', '#ffc107', '#dc3545', '#28a745']; // เทา, เหลือง, แดง, เขียว
 
-    loanChart = new Chart(ctx, {
+    loanChart = new Chart(ctx.getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: labels,
             datasets: [{
                 data: data,
-                backgroundColor: colors.slice(0, labels.length),
+                backgroundColor: colors,
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
@@ -841,20 +861,141 @@ function renderChart() {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom'
-                },
-                title: {
-                    display: true,
-                    text: 'สถานะเงินกู้'
+                    position: 'bottom',
+                    labels: { font: { size: 11 } }
                 }
             }
         }
     });
+    
+    // เรียก render กราฟเส้น
+    renderStatusLineChart();
+}
+
+// ============ STATUS LINE CHART ============
+async function renderStatusLineChart() {
+    const ctx = document.getElementById('statusLineChart');
+    if (!ctx) return;
+    
+    if (statusLineChart) {
+        statusLineChart.destroy();
+    }
+    
+    try {
+        // ดึงข้อมูลย้อนหลัง 6 เดือน
+        const now = new Date();
+        const labels = [];
+        const dataEmpty = [];  // ว่าง
+        const dataInterest = []; // ดอก
+        const dataPrincipal = []; // ต้น+ดอก
+        const dataClosed = []; // ปิดจบ
+        
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const year = d.getFullYear();
+            const month = d.getMonth() + 1;
+            labels.push(`${thaiMonthsShort[month]} ${(year + 543) % 100}`);
+            
+            // นับจำนวนแต่ละสถานะในเดือนนั้น
+            const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+            
+            let empty = 0, interest = 0, principal = 0, closed = 0;
+            
+            // Query loans for this month
+            const snapshot = await db.collection("loans")
+                .where("loanDate", ">=", `${monthStr}-01`)
+                .where("loanDate", "<=", `${monthStr}-31`)
+                .get();
+            
+            snapshot.forEach(doc => {
+                const status = doc.data().status || 'ว่าง';
+                if (status === 'ว่าง') empty++;
+                else if (status === 'ดอก' || status === 'กำลังผ่อน') interest++;
+                else if (status === 'ต้น+ดอก' || status === 'ค้างชำระ' || status === 'เกินกำหนด') principal++;
+                else if (status === 'ปิดจบ' || status === 'ชำระแล้ว' || status === 'คืนแล้ว') closed++;
+                else empty++;
+            });
+            
+            dataEmpty.push(empty);
+            dataInterest.push(interest);
+            dataPrincipal.push(principal);
+            dataClosed.push(closed);
+        }
+        
+        statusLineChart = new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'ว่าง',
+                        data: dataEmpty,
+                        borderColor: '#6c757d',
+                        backgroundColor: 'rgba(108,117,125,0.1)',
+                        fill: false,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'ดอก',
+                        data: dataInterest,
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255,193,7,0.1)',
+                        fill: false,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'ต้น+ดอก',
+                        data: dataPrincipal,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220,53,69,0.1)',
+                        fill: false,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'ปิดจบ',
+                        data: dataClosed,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40,167,69,0.1)',
+                        fill: false,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, boxWidth: 12 }
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error("Error rendering status line chart:", error);
+    }
 }
 
 // ============ SAVE MONTHLY DATA ============
 async function saveMonthlyData(principal, interest, paid, count, active) {
     const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    
+    // นับจำนวนแต่ละสถานะ
+    let statusCounts = { 'ว่าง': 0, 'ดอก': 0, 'ต้น+ดอก': 0, 'ปิดจบ': 0 };
+    allLoans.forEach(loan => {
+        const status = loan.status || 'ว่าง';
+        if (statusCounts[status] !== undefined) {
+            statusCounts[status]++;
+        }
+    });
     
     try {
         await db.collection("monthly_reports").doc(monthKey).set({
@@ -867,6 +1008,7 @@ async function saveMonthlyData(principal, interest, paid, count, active) {
             loanCount: count,
             activeCount: active,
             totalSum: principal + interest,
+            statusCounts: statusCounts, // เก็บจำนวนแต่ละสถานะ
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     } catch (error) {

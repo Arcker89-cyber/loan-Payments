@@ -251,12 +251,13 @@
             <a href="history.html" class="nav-link">📅 ประวัติรายเดือน</a>
         </nav>
 
-        <!-- Month Filter -->
-        <div class="filter-section">
-            <label>📅 เลือกเดือน:</label>
+        <!-- Month Filter - Compact -->
+        <div class="filter-section-compact">
+            <span class="filter-label">📅</span>
             <select id="monthSelect" onchange="filterByMonth()"></select>
             <select id="yearSelect" onchange="filterByMonth()"></select>
-            <button class="btn-outline" onclick="loadAllLoans()" style="margin-left: 10px;">📋 ดูทั้งหมด</button>
+            <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
+            <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
             <span class="month-display" id="currentMonthDisplay">-</span>
         </div>
 
@@ -288,9 +289,16 @@
             </div>
         </div>
 
-        <!-- Chart -->
-        <div class="chart-container">
-            <canvas id="loanChart"></canvas>
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h4>📊 สัดส่วนสถานะ</h4>
+                <canvas id="loanChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h4>📈 แนวโน้มสถานะรายเดือน</h4>
+                <canvas id="statusLineChart"></canvas>
+            </div>
         </div>
 
         <!-- Loan Table -->
