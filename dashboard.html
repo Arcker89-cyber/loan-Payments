@@ -307,6 +307,7 @@
             <!-- Bulk Actions Bar -->
             <div class="bulk-actions" id="bulkActions">
                 <span>เลือกแล้ว <span id="selectedCount">0</span> รายการ</span>
+                <button onclick="bulkChangeStatus('ว่าง')">⚪ ว่าง</button>
                 <button onclick="bulkChangeStatus('ดอก')">💰 ดอก</button>
                 <button onclick="bulkChangeStatus('ต้น+ดอก')">💵 ต้น+ดอก</button>
                 <button onclick="bulkChangeStatus('ปิดจบ')">✅ ปิดจบ</button>
@@ -346,6 +347,7 @@
                             <th>
                                 <select id="filterStatus" onchange="applyFilters()">
                                     <option value="">ทั้งหมด</option>
+                                    <option value="ว่าง">ว่าง</option>
                                     <option value="ดอก">ดอก</option>
                                     <option value="ต้น+ดอก">ต้น+ดอก</option>
                                     <option value="ปิดจบ">ปิดจบ</option>
@@ -400,10 +402,10 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="loanDate">วันที่กู้ *</label>
-                        <input type="date" id="loanDate" required>
+                        <input type="date" id="loanDate" required onchange="calculateReturnDate()">
                     </div>
                     <div class="form-group">
-                        <label for="returnDate">วันที่คืน</label>
+                        <label for="returnDate">วันที่คืน <span style="color:#28a745;font-size:0.8rem;">(คำนวณอัตโนมัติ +1 เดือน)</span></label>
                         <input type="date" id="returnDate">
                     </div>
                 </div>
@@ -442,7 +444,8 @@
                     <div class="form-group">
                         <label for="status">สถานะ</label>
                         <select id="status">
-                            <option value="ดอก" selected>ดอก</option>
+                            <option value="ว่าง" selected>ว่าง</option>
+                            <option value="ดอก">ดอก</option>
                             <option value="ต้น+ดอก">ต้น+ดอก</option>
                             <option value="ปิดจบ">ปิดจบ</option>
                         </select>

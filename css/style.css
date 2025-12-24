@@ -277,6 +277,7 @@ table tr:hover { background: #f8f9fa; }
 }
 
 /* สถานะใหม่ */
+.status-badge.status-empty { background: #e9ecef; color: #495057; } /* ว่าง - เทา */
 .status-badge.status-interest { background: #fff3cd; color: #856404; } /* ดอก - เหลือง */
 .status-badge.status-principal { background: #f8d7da; color: #721c24; } /* ต้น+ดอก - แดง */
 .status-badge.status-closed { background: #d4edda; color: #155724; } /* ปิดจบ - เขียว */

@@ -84,6 +84,59 @@ function calculateInterest() {
     document.getElementById('totalDisplay').value = total.toLocaleString() + ' บาท';
 }
 
+// ============ CALCULATE RETURN DATE ============
+// คำนวณวันที่คืน = วันที่กู้ + 1 เดือน (จัดการวันที่พิเศษ)
+function calculateReturnDate() {
+    const loanDateInput = document.getElementById('loanDate');
+    const returnDateInput = document.getElementById('returnDate');
+    
+    if (!loanDateInput.value) return;
+    
+    const returnDate = addOneMonthSmart(loanDateInput.value);
+    returnDateInput.value = returnDate;
+}
+
+// ฟังก์ชันบวก 1 เดือนอย่างฉลาด
+function addOneMonthSmart(dateStr) {
+    if (!dateStr) return '';
+    
+    try {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        
+        // เดือนถัดไป
+        let newMonth = month + 1;
+        let newYear = year;
+        
+        if (newMonth > 12) {
+            newMonth = 1;
+            newYear++;
+        }
+        
+        // หาวันสุดท้ายของเดือนถัดไป
+        const lastDayOfNextMonth = new Date(newYear, newMonth, 0).getDate();
+        
+        // กรณีพิเศษ: ถ้าวันที่กู้คือ 28 หรือ 29 กุมภาพันธ์ → วันที่คืนเป็น 30 มีนาคม
+        if (month === 2 && (day === 28 || day === 29)) {
+            return `${newYear}-${String(newMonth).padStart(2, '0')}-30`;
+        }
+        
+        // กรณีทั่วไป: ถ้าวันที่มากกว่าวันสุดท้ายของเดือนถัดไป ใช้วันสุดท้าย
+        // เช่น 30 ม.ค. → 28/29 ก.พ.
+        // เช่น 31 ม.ค. → 28/29 ก.พ.
+        // เช่น 31 พ.ค. → 30 มิ.ย.
+        let newDay = day;
+        if (day > lastDayOfNextMonth) {
+            newDay = lastDayOfNextMonth;
+        }
+        
+        return `${newYear}-${String(newMonth).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
+        
+    } catch (e) {
+        console.error('addOneMonthSmart error:', e);
+        return '';
+    }
+}
+
 // ============ INITIALIZE ============
 function initMonthSelector() {
     const monthSelect = document.getElementById("monthSelect");
@@ -500,6 +553,7 @@ function renderTable(loans) {
 function getStatusClass(status) {
     const classes = {
         // สถานะใหม่
+        'ว่าง': 'status-empty',
         'ดอก': 'status-interest',
         'ต้น+ดอก': 'status-principal',
         'ปิดจบ': 'status-closed',
@@ -510,7 +564,7 @@ function getStatusClass(status) {
         'คืนแล้ว': 'status-closed',
         'ชำระแล้ว': 'status-closed'
     };
-    return classes[status] || 'status-interest';
+    return classes[status] || 'status-empty';
 }
 
 function formatDate(dateStr) {
@@ -1097,19 +1151,36 @@ function parseLoanImportData(jsonData) {
         return '';
     }
     
-    // ✅ ฟังก์ชันคำนวณวันที่คืน = วันที่กู้ + 1 เดือน
+    // ✅ ฟังก์ชันคำนวณวันที่คืน = วันที่กู้ + 1 เดือน (จัดการวันที่พิเศษ)
     function addOneMonth(dateStr) {
         if (!dateStr) return '';
         try {
-            const [y, m, d] = dateStr.split('-').map(Number);
-            const date = new Date(y, m - 1, d); // month is 0-indexed
-            date.setMonth(date.getMonth() + 1);
+            const [year, month, day] = dateStr.split('-').map(Number);
             
-            const newY = date.getFullYear();
-            const newM = String(date.getMonth() + 1).padStart(2, '0');
-            const newD = String(date.getDate()).padStart(2, '0');
+            // เดือนถัดไป
+            let newMonth = month + 1;
+            let newYear = year;
             
-            return `${newY}-${newM}-${newD}`;
+            if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            }
+            
+            // หาวันสุดท้ายของเดือนถัดไป
+            const lastDayOfNextMonth = new Date(newYear, newMonth, 0).getDate();
+            
+            // กรณีพิเศษ: ถ้าวันที่กู้คือ 28 หรือ 29 กุมภาพันธ์ → วันที่คืนเป็น 30 มีนาคม
+            if (month === 2 && (day === 28 || day === 29)) {
+                return `${newYear}-${String(newMonth).padStart(2, '0')}-30`;
+            }
+            
+            // กรณีทั่วไป: ถ้าวันที่มากกว่าวันสุดท้ายของเดือนถัดไป ใช้วันสุดท้าย
+            let newDay = day;
+            if (day > lastDayOfNextMonth) {
+                newDay = lastDayOfNextMonth;
+            }
+            
+            return `${newYear}-${String(newMonth).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
         } catch (e) {
             console.error('addOneMonth error:', e);
             return '';
@@ -1118,7 +1189,7 @@ function parseLoanImportData(jsonData) {
     
     // ✅ ฟังก์ชันแปลงสถานะ
     function mapStatus(val) {
-        if (!val) return 'ดอก';
+        if (!val) return 'ว่าง'; // default เป็น "ว่าง"
         val = String(val).trim().toLowerCase();
         
         // แปลงสถานะเก่าเป็นใหม่
@@ -1128,7 +1199,13 @@ function parseLoanImportData(jsonData) {
         if (val.includes('ต้น') || val.includes('เกิน') || val.includes('ค้าง')) {
             return 'ต้น+ดอก';
         }
-        return 'ดอก'; // default
+        if (val.includes('ดอก') || val.includes('กำลัง') || val.includes('ผ่อน')) {
+            return 'ดอก';
+        }
+        if (val.includes('ว่าง')) {
+            return 'ว่าง';
+        }
+        return 'ว่าง'; // default เป็น "ว่าง"
     }
     
     jsonData.forEach((row, index) => {
