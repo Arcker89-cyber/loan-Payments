@@ -253,12 +253,16 @@
 
         <!-- Month Filter - Compact -->
         <div class="filter-section-compact">
-            <span class="filter-label">📅</span>
-            <select id="monthSelect" onchange="filterByMonth()"></select>
-            <select id="yearSelect" onchange="filterByMonth()"></select>
-            <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
-            <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
-            <span class="month-display" id="currentMonthDisplay">-</span>
+            <div class="filter-row-controls">
+                <span class="filter-label">📅</span>
+                <select id="monthSelect" onchange="filterByMonth()"></select>
+                <select id="yearSelect" onchange="filterByMonth()"></select>
+                <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
+                <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
+            </div>
+            <div class="month-display-wrapper">
+                <span class="month-display" id="currentMonthDisplay">-</span>
+            </div>
         </div>
 
         <!-- Summary Cards -->
