@@ -4,11 +4,15 @@ console.log("✅ loans.js loaded");
 // Global Variables
 let loanChart = null;
 let allLoans = [];
+let filteredLoans = []; // เก็บข้อมูลที่ filter แล้ว
 let allCustomers = [];
 let currentMonth = new Date().getMonth() + 1;
 let currentYear = new Date().getFullYear();
 let selectedLoans = new Set(); // เก็บ ID ที่เลือก
 let confirmCallback = null; // Callback สำหรับ confirm modal
+
+// Sorting & Filtering
+let currentSort = { field: 'loanDate', direction: 'asc' }; // default: เรียงตามวันที่กู้ (เก่าสุดก่อน)
 
 // Thai Month Names
 const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
@@ -219,7 +223,7 @@ async function loadAllLoans() {
         });
 
         updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
-        renderTable(allLoans);
+        applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
         showToast(`โหลดข้อมูลทั้งหมด ${allLoans.length} รายการ`, 'success');
@@ -293,7 +297,7 @@ async function loadDataWithJsFilter() {
         });
 
         updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
-        renderTable(allLoans);
+        applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
     } catch (error) {
@@ -325,7 +329,7 @@ function processLoanData(snapshot) {
     });
 
     updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
-    renderTable(allLoans);
+    applyFilters(); // ใช้ sorting และ filtering
     renderChart();
     saveMonthlyData(totalPrincipal, totalInterest, totalPaid, allLoans.length, activeCount);
 
@@ -341,6 +345,111 @@ function updateDashboardCards(principal, interest, sum, paid, active, count) {
     document.getElementById("loanCount").textContent = count + " รายการ";
 }
 
+// ============ SORTING & FILTERING ============
+function sortTable(field) {
+    // Toggle direction if same field
+    if (currentSort.field === field) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.field = field;
+        currentSort.direction = 'asc';
+    }
+    
+    // Update UI
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('active-sort');
+        th.querySelector('.sort-icon').textContent = '⇅';
+    });
+    
+    const activeHeader = document.querySelector(`th.sortable[onclick="sortTable('${field}')"]`);
+    if (activeHeader) {
+        activeHeader.classList.add('active-sort');
+        activeHeader.querySelector('.sort-icon').textContent = currentSort.direction === 'asc' ? '↑' : '↓';
+    }
+    
+    applyFilters();
+}
+
+function applyFilters() {
+    // Get filter values
+    const filterNickname = document.getElementById('filterNickname')?.value.toLowerCase() || '';
+    const filterName = document.getElementById('filterName')?.value.toLowerCase() || '';
+    const filterLoanDate = document.getElementById('filterLoanDate')?.value || '';
+    const filterStatus = document.getElementById('filterStatus')?.value || '';
+    
+    // Filter
+    filteredLoans = allLoans.filter(loan => {
+        if (filterNickname && !(loan.nickname || '').toLowerCase().includes(filterNickname)) return false;
+        if (filterName && !(loan.nameSurname || '').toLowerCase().includes(filterName)) return false;
+        if (filterLoanDate && loan.loanDate !== filterLoanDate) return false;
+        if (filterStatus && loan.status !== filterStatus) return false;
+        return true;
+    });
+    
+    // Sort
+    filteredLoans.sort((a, b) => {
+        let valA, valB;
+        
+        switch (currentSort.field) {
+            case 'no':
+                valA = allLoans.indexOf(a);
+                valB = allLoans.indexOf(b);
+                break;
+            case 'nickname':
+                valA = (a.nickname || '').toLowerCase();
+                valB = (b.nickname || '').toLowerCase();
+                break;
+            case 'nameSurname':
+                valA = (a.nameSurname || '').toLowerCase();
+                valB = (b.nameSurname || '').toLowerCase();
+                break;
+            case 'loanDate':
+                valA = a.loanDate || '';
+                valB = b.loanDate || '';
+                break;
+            case 'returnDate':
+                valA = a.returnDate || '';
+                valB = b.returnDate || '';
+                break;
+            case 'principal':
+                valA = parseFloat(a.principal) || 0;
+                valB = parseFloat(b.principal) || 0;
+                break;
+            case 'interest':
+                valA = parseFloat(a.interest) || 0;
+                valB = parseFloat(b.interest) || 0;
+                break;
+            case 'total':
+                valA = (parseFloat(a.principal) || 0) + (parseFloat(a.interest) || 0);
+                valB = (parseFloat(b.principal) || 0) + (parseFloat(b.interest) || 0);
+                break;
+            case 'status':
+                valA = a.status || '';
+                valB = b.status || '';
+                break;
+            default:
+                valA = a.loanDate || '';
+                valB = b.loanDate || '';
+        }
+        
+        if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    renderTable(filteredLoans);
+}
+
+function clearFilters() {
+    document.getElementById('filterNickname').value = '';
+    document.getElementById('filterName').value = '';
+    document.getElementById('filterLoanDate').value = '';
+    document.getElementById('filterStatus').value = '';
+    
+    applyFilters();
+    showToast('ล้าง Filter แล้ว', 'info');
+}
+
 // ============ RENDER TABLE ============
 function renderTable(loans) {
     loanTableBody.innerHTML = "";
@@ -351,7 +460,7 @@ function renderTable(loans) {
         loanTableBody.innerHTML = `
             <tr>
                 <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
-                    ไม่มีข้อมูลเงินกู้ในเดือนนี้
+                    ไม่มีข้อมูลเงินกู้ที่ตรงกับเงื่อนไข
                 </td>
             </tr>
         `;

@@ -319,17 +319,39 @@
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="row-checkbox"></th>
-                            <th>No.</th>
-                            <th>ชื่อเล่น</th>
-                            <th>ชื่อ-นามสกุล</th>
-                            <th>วันที่กู้</th>
-                            <th>วันที่คืน</th>
-                            <th>เงินต้น</th>
-                            <th>ประเภทดอกเบี้ย</th>
-                            <th>ดอกเบี้ย</th>
-                            <th>ต้น + ดอก</th>
-                            <th>สถานะ</th>
+                            <th class="sortable" onclick="sortTable('no')">No. <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('nickname')">ชื่อเล่น <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('nameSurname')">ชื่อ-นามสกุล <span class="sort-icon">⇅</span></th>
+                            <th class="sortable active-sort" onclick="sortTable('loanDate')">วันที่กู้ <span class="sort-icon">↑</span></th>
+                            <th class="sortable" onclick="sortTable('returnDate')">วันที่คืน <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('principal')">เงินต้น <span class="sort-icon">⇅</span></th>
+                            <th>ประเภท</th>
+                            <th class="sortable" onclick="sortTable('interest')">ดอกเบี้ย <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('total')">ต้น + ดอก <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('status')">สถานะ <span class="sort-icon">⇅</span></th>
                             <th>จัดการ</th>
+                        </tr>
+                        <!-- Filter Row -->
+                        <tr class="filter-row">
+                            <th></th>
+                            <th></th>
+                            <th><input type="text" id="filterNickname" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
+                            <th><input type="text" id="filterName" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
+                            <th><input type="date" id="filterLoanDate" onchange="applyFilters()"></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th>
+                                <select id="filterStatus" onchange="applyFilters()">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="ดอก">ดอก</option>
+                                    <option value="ต้น+ดอก">ต้น+ดอก</option>
+                                    <option value="ปิดจบ">ปิดจบ</option>
+                                </select>
+                            </th>
+                            <th><button class="btn-clear-filter" onclick="clearFilters()">✖️</button></th>
                         </tr>
                     </thead>
                     <tbody id="loanTableBody">

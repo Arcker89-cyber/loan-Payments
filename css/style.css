@@ -199,6 +199,73 @@ table th {
     top: 0;
 }
 
+/* Sortable Column Headers */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+th.sortable:hover {
+    background: #e9ecef;
+}
+
+th.sortable.active-sort {
+    background: #007bff;
+    color: white;
+}
+
+th.sortable .sort-icon {
+    margin-left: 5px;
+    font-size: 0.8rem;
+    opacity: 0.6;
+}
+
+th.sortable.active-sort .sort-icon {
+    opacity: 1;
+}
+
+/* Filter Row */
+.filter-row th {
+    background: #f0f4f8;
+    padding: 5px;
+    position: sticky;
+    top: 44px;
+}
+
+.filter-row input[type="text"],
+.filter-row input[type="date"],
+.filter-row select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    box-sizing: border-box;
+}
+
+.filter-row input[type="text"]:focus,
+.filter-row input[type="date"]:focus,
+.filter-row select:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+}
+
+.btn-clear-filter {
+    padding: 5px 10px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-clear-filter:hover {
+    background: #5a6268;
+}
+
 table tr:hover { background: #f8f9fa; }
 
 .status-badge {
