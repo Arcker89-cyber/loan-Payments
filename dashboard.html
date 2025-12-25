@@ -342,6 +342,7 @@
                             <th>ประเภท</th>
                             <th class="sortable" onclick="sortTable('interest')">ดอกเบี้ย <span class="sort-icon">⇅</span></th>
                             <th class="sortable" onclick="sortTable('total')">ต้น + ดอก <span class="sort-icon">⇅</span></th>
+                            <th class="sortable" onclick="sortTable('payAmount')">ยอดจ่าย <span class="sort-icon">⇅</span></th>
                             <th class="sortable" onclick="sortTable('status')">สถานะ <span class="sort-icon">⇅</span></th>
                             <th>จัดการ</th>
                         </tr>
@@ -352,6 +353,7 @@
                             <th><input type="text" id="filterNickname" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
                             <th><input type="text" id="filterName" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
                             <th><input type="date" id="filterLoanDate" onchange="applyFilters()"></th>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -371,7 +373,7 @@
                     </thead>
                     <tbody id="loanTableBody">
                         <tr>
-                            <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
+                            <td colspan="13" style="text-align: center; padding: 30px; color: #999;">
                                 กำลังโหลดข้อมูล...
                             </td>
                         </tr>

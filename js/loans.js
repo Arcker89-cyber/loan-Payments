@@ -485,6 +485,10 @@ function applyFilters() {
                 valA = (parseFloat(a.principal) || 0) + (parseFloat(a.interest) || 0);
                 valB = (parseFloat(b.principal) || 0) + (parseFloat(b.interest) || 0);
                 break;
+            case 'payAmount':
+                valA = calculatePayAmount(a);
+                valB = calculatePayAmount(b);
+                break;
             case 'status':
                 valA = a.status || '';
                 valB = b.status || '';
@@ -512,6 +516,33 @@ function clearFilters() {
     showToast('ล้าง Filter แล้ว', 'info');
 }
 
+// ============ CALCULATE PAY AMOUNT ============
+// คำนวณยอดจ่ายตามสถานะ
+function calculatePayAmount(loan) {
+    const principal = parseFloat(loan.principal) || 0;
+    const interest = parseFloat(loan.interest) || 0;
+    const status = loan.status || 'ว่าง';
+    
+    // ถ้ามี payAmount ที่บันทึกไว้แล้ว (กรณี ต้น+ดอก ที่ใส่เอง)
+    if (loan.payAmount !== undefined && loan.payAmount !== null && status === 'ต้น+ดอก') {
+        return parseFloat(loan.payAmount) || 0;
+    }
+    
+    switch (status) {
+        case 'ว่าง':
+            return 0;
+        case 'ดอก':
+            return interest; // จ่ายแค่ดอกเบี้ย
+        case 'ต้น+ดอก':
+            return principal + interest; // default ถ้ายังไม่ได้ใส่
+        case 'ปิดจบ':
+            // ต้น + ดอก 15%
+            return principal + (principal * 0.15);
+        default:
+            return 0;
+    }
+}
+
 // ============ RENDER TABLE ============
 function renderTable(loans) {
     loanTableBody.innerHTML = "";
@@ -521,7 +552,7 @@ function renderTable(loans) {
     if (loans.length === 0) {
         loanTableBody.innerHTML = `
             <tr>
-                <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
+                <td colspan="13" style="text-align: center; padding: 30px; color: #999;">
                     ไม่มีข้อมูลเงินกู้ที่ตรงกับเงื่อนไข
                 </td>
             </tr>
@@ -533,8 +564,23 @@ function renderTable(loans) {
         const principal = parseFloat(loan.principal) || 0;
         const interest = parseFloat(loan.interest) || 0;
         const total = principal + interest;
+        const payAmount = calculatePayAmount(loan);
+        const status = loan.status || 'ว่าง';
         
-        const statusClass = getStatusClass(loan.status);
+        const statusClass = getStatusClass(status);
+        
+        // สร้าง HTML สำหรับยอดจ่าย
+        let payAmountHtml = '';
+        if (status === 'ต้น+ดอก') {
+            // แสดงเป็น input ให้แก้ไขได้
+            payAmountHtml = `<input type="number" class="pay-amount-input" value="${payAmount}" 
+                onchange="updatePayAmount('${loan.id}', this.value)" 
+                style="width:80px;text-align:right;padding:3px 5px;border:1px solid #ddd;border-radius:4px;">`;
+        } else if (status === 'ว่าง') {
+            payAmountHtml = '<span style="color:#999;">-</span>';
+        } else {
+            payAmountHtml = `<strong style="color:#28a745;">${payAmount.toLocaleString()}</strong>`;
+        }
 
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -548,7 +594,8 @@ function renderTable(loans) {
             <td>${loan.interestType || '-'}</td>
             <td class="text-right">${interest.toLocaleString()}</td>
             <td class="text-right"><strong>${total.toLocaleString()}</strong></td>
-            <td><span class="status-badge ${statusClass}">${loan.status || '-'}</span></td>
+            <td class="text-right">${payAmountHtml}</td>
+            <td><span class="status-badge ${statusClass}">${status}</span></td>
             <td>
                 <button class="btn-action btn-detail" onclick="viewLoanDetail('${loan.id}')" title="รายละเอียด">👁️</button>
                 <button class="btn-action btn-edit" onclick="editLoan('${loan.id}')" title="แก้ไข">✏️</button>
@@ -557,6 +604,28 @@ function renderTable(loans) {
         `;
         loanTableBody.appendChild(row);
     });
+}
+
+// อัพเดทยอดจ่าย (สำหรับสถานะ ต้น+ดอก)
+async function updatePayAmount(loanId, value) {
+    try {
+        const payAmount = parseFloat(value) || 0;
+        await db.collection("loans").doc(loanId).update({
+            payAmount: payAmount,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // อัพเดท allLoans
+        const loan = allLoans.find(l => l.id === loanId);
+        if (loan) {
+            loan.payAmount = payAmount;
+        }
+        
+        showToast('บันทึกยอดจ่ายเรียบร้อย', 'success');
+    } catch (error) {
+        console.error("Error updating pay amount:", error);
+        showToast('เกิดข้อผิดพลาด: ' + error.message, 'error');
+    }
 }
 
 function getStatusClass(status) {

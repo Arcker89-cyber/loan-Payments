@@ -338,6 +338,27 @@ th.sortable.active-sort .sort-icon {
 
 table tr:hover { background: #f8f9fa; }
 
+/* Pay Amount Input */
+.pay-amount-input {
+    width: 85px;
+    text-align: right;
+    padding: 4px 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.pay-amount-input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+}
+
+.pay-amount-input:hover {
+    border-color: #aaa;
+}
+
 .status-badge {
     padding: 5px 12px;
     border-radius: 20px;
