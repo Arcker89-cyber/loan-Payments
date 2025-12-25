@@ -251,21 +251,6 @@
             <a href="history.html" class="nav-link">📅 ประวัติรายเดือน</a>
         </nav>
 
-        <!-- Month Filter - Compact -->
-        <div class="filter-section-compact">
-            <div class="filter-row-controls">
-                <select id="monthSelect" onchange="filterByMonth()"></select>
-                <select id="yearSelect" onchange="filterByMonth()"></select>
-                <div class="filter-buttons">
-                    <button class="btn-sm btn-primary" onclick="filterByMonth()">🔍 ค้นหา</button>
-                    <button class="btn-sm btn-outline" onclick="loadAllLoans()">📋 ทั้งหมด</button>
-                </div>
-            </div>
-            <div class="month-display-wrapper">
-                <span class="month-display" id="currentMonthDisplay">-</span>
-            </div>
-        </div>
-
         <!-- Summary Cards -->
         <div class="cards-grid">
             <div class="card blue">
@@ -308,12 +293,24 @@
 
         <!-- Loan Table -->
         <div class="table-section">
-            <div class="table-header">
-                <h3>📋 รายการเงินกู้ประจำเดือน</h3>
-                <div class="table-actions">
-                    <button class="btn-import" onclick="openImportLoanModal()">📤 Import Excel</button>
-                    <button class="btn-excel" onclick="exportToExcel()">📥 Export Excel</button>
-                    <button class="btn-add" onclick="openModal()">➕ เพิ่มรายการ</button>
+            <!-- Month Navigation Header -->
+            <div class="month-nav-header">
+                <div class="month-nav-left">
+                    <h3>📋 รายการเงินกู้ประจำเดือน</h3>
+                </div>
+                <div class="month-nav-center">
+                    <button class="btn-nav btn-prev" onclick="prevMonth()" title="เดือนก่อนหน้า">◀</button>
+                    <div class="month-selector">
+                        <select id="monthSelect" onchange="filterByMonth()"></select>
+                        <select id="yearSelect" onchange="filterByMonth()"></select>
+                    </div>
+                    <span class="month-display" id="currentMonthDisplay">-</span>
+                    <button class="btn-nav btn-next" onclick="nextMonth()" title="เดือนถัดไป">▶</button>
+                </div>
+                <div class="month-nav-right">
+                    <button class="btn-import" onclick="openImportLoanModal()">📤 Import</button>
+                    <button class="btn-excel" onclick="exportToExcel()">📥 Export</button>
+                    <button class="btn-add" onclick="openModal()">➕ เพิ่ม</button>
                 </div>
             </div>
             

@@ -251,6 +251,33 @@ function filterByMonth() {
     loadDashboardData();
 }
 
+// ============ MONTH NAVIGATION ============
+function prevMonth() {
+    if (currentMonth === 1) {
+        currentMonth = 12;
+        currentYear--;
+    } else {
+        currentMonth--;
+    }
+    document.getElementById("monthSelect").value = currentMonth;
+    document.getElementById("yearSelect").value = currentYear;
+    updateMonthDisplay();
+    loadDashboardData();
+}
+
+function nextMonth() {
+    if (currentMonth === 12) {
+        currentMonth = 1;
+        currentYear++;
+    } else {
+        currentMonth++;
+    }
+    document.getElementById("monthSelect").value = currentMonth;
+    document.getElementById("yearSelect").value = currentYear;
+    updateMonthDisplay();
+    loadDashboardData();
+}
+
 // ============ LOAD ALL LOANS ============
 async function loadAllLoans() {
     try {

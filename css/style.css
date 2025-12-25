@@ -82,92 +82,115 @@ header h1 { color: #333; margin: 0; font-size: 1.5rem; }
 .nav-link.active { background: #007bff; color: white; }
 
 /* Filter Section - Month Selector (Compact) */
-.filter-section-compact {
+/* Month Navigation Header */
+.month-nav-header {
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: space-between;
     gap: 15px;
-    margin-bottom: 20px;
-    background: white;
     padding: 15px 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    background: white;
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
 }
 
-/* Row 1: Controls - Full Width */
-.filter-row-controls {
+.month-nav-left h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+    white-space: nowrap;
+}
+
+.month-nav-center {
     display: flex;
-    width: 100%;
-    gap: 10px;
     align-items: center;
-}
-
-.filter-row-controls .filter-label {
-    display: none;
-}
-
-.filter-section-compact select {
+    gap: 10px;
     flex: 1;
-    padding: 10px 15px;
+    justify-content: center;
+}
+
+.month-nav-right {
+    display: flex;
+    gap: 8px;
+}
+
+/* Navigation Buttons */
+.btn-nav {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-nav:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.6);
+}
+
+.btn-nav:active {
+    transform: scale(0.95);
+}
+
+/* Month Selector */
+.month-selector {
+    display: flex;
+    gap: 8px;
+}
+
+.month-selector select {
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 6px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     cursor: pointer;
     background: white;
 }
 
-.filter-section-compact select:focus {
+.month-selector select:focus {
     border-color: #007bff;
     outline: none;
 }
 
-.filter-buttons {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.btn-sm {
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.3s;
-    white-space: nowrap;
-}
-
-.btn-sm.btn-primary {
-    background: #007bff;
-    color: white;
-}
-
-.btn-sm.btn-outline {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-sm:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
-}
-
-/* Row 2: Month Display - Large & Centered */
-.month-display-wrapper {
-    width: 100%;
-    text-align: center;
-}
-
+/* Month Display Badge */
 .month-display {
     display: inline-block;
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    padding: 12px 60px;
-    border-radius: 30px;
+    padding: 10px 30px;
+    border-radius: 25px;
     font-weight: bold;
-    font-size: 1.3rem;
-    letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .month-nav-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .month-nav-center {
+        order: -1;
+        width: 100%;
+    }
+    
+    .month-nav-left, .month-nav-right {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* Cards */
@@ -222,10 +245,10 @@ header h1 { color: #333; margin: 0; font-size: 1.5rem; }
 /* Table Section */
 .table-section {
     background: white;
-    padding: 20px;
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     margin-bottom: 20px;
+    overflow: hidden;
 }
 
 .table-header {
@@ -241,11 +264,78 @@ header h1 { color: #333; margin: 0; font-size: 1.5rem; }
 
 .table-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* Action Buttons in Header */
+.btn-import, .btn-excel, .btn-add {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-import {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-excel {
+    background: #28a745;
+    color: white;
+}
+
+.btn-add {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.btn-import:hover, .btn-excel:hover, .btn-add:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+/* Bulk Actions Bar */
+.bulk-actions {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    border-bottom: 1px solid #444;
+    flex-wrap: wrap;
+}
+
+.bulk-actions.show {
+    display: flex;
+}
+
+.bulk-actions span {
+    color: white;
+    font-size: 0.9rem;
+    margin-right: 10px;
+}
+
+.bulk-actions button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    transition: all 0.3s;
+}
+
+.bulk-actions button:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+}
+
 /* Table */
 .table-wrapper {
     overflow-x: auto;
-    margin: 0 -10px;
-    padding: 0 10px;
+    padding: 0 15px 15px 15px;
 }
 
 table {
