@@ -329,31 +329,29 @@
             </div>
             
             <div class="table-wrapper">
-                <table>
+                <table class="loan-table">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="row-checkbox"></th>
-                            <th class="sortable" onclick="sortTable('no')">No. <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('nickname')">ชื่อเล่น <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('nameSurname')">ชื่อ-นามสกุล <span class="sort-icon">⇅</span></th>
-                            <th class="sortable active-sort" onclick="sortTable('loanDate')">วันที่กู้ <span class="sort-icon">↑</span></th>
-                            <th class="sortable" onclick="sortTable('returnDate')">วันที่คืน <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('principal')">เงินต้น <span class="sort-icon">⇅</span></th>
-                            <th>ประเภท</th>
-                            <th class="sortable" onclick="sortTable('interest')">ดอกเบี้ย <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('total')">ต้น + ดอก <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('payAmount')">ยอดจ่าย <span class="sort-icon">⇅</span></th>
-                            <th class="sortable" onclick="sortTable('status')">สถานะ <span class="sort-icon">⇅</span></th>
-                            <th>จัดการ</th>
+                            <th class="col-checkbox"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="row-checkbox"></th>
+                            <th class="col-no sortable" onclick="sortTable('no')">No.<span class="sort-icon">⇅</span></th>
+                            <th class="col-nickname sortable" onclick="sortTable('nickname')">ชื่อ<span class="sort-icon">⇅</span></th>
+                            <th class="col-name sortable" onclick="sortTable('nameSurname')">ชื่อ-สกุล<span class="sort-icon">⇅</span></th>
+                            <th class="col-date sortable active-sort" onclick="sortTable('loanDate')">วันกู้<span class="sort-icon">↑</span></th>
+                            <th class="col-date sortable" onclick="sortTable('returnDate')">วันคืน<span class="sort-icon">⇅</span></th>
+                            <th class="col-money sortable" onclick="sortTable('principal')">เงินต้น<span class="sort-icon">⇅</span></th>
+                            <th class="col-money sortable" onclick="sortTable('interest')">ดอกเบี้ย<span class="sort-icon">⇅</span></th>
+                            <th class="col-money sortable" onclick="sortTable('total')">ต้น+ดอก<span class="sort-icon">⇅</span></th>
+                            <th class="col-money sortable" onclick="sortTable('payAmount')">ยอดจ่าย<span class="sort-icon">⇅</span></th>
+                            <th class="col-status sortable" onclick="sortTable('status')">สถานะ<span class="sort-icon">⇅</span></th>
+                            <th class="col-action">จัดการ</th>
                         </tr>
                         <!-- Filter Row -->
                         <tr class="filter-row">
                             <th></th>
                             <th></th>
-                            <th><input type="text" id="filterNickname" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
-                            <th><input type="text" id="filterName" placeholder="🔍 ค้นหา..." oninput="applyFilters()"></th>
+                            <th><input type="text" id="filterNickname" placeholder="🔍" oninput="applyFilters()"></th>
+                            <th><input type="text" id="filterName" placeholder="🔍" oninput="applyFilters()"></th>
                             <th><input type="date" id="filterLoanDate" onchange="applyFilters()"></th>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -373,7 +371,7 @@
                     </thead>
                     <tbody id="loanTableBody">
                         <tr>
-                            <td colspan="13" style="text-align: center; padding: 30px; color: #999;">
+                            <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
                                 กำลังโหลดข้อมูล...
                             </td>
                         </tr>

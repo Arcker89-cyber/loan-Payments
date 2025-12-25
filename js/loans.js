@@ -552,7 +552,7 @@ function renderTable(loans) {
     if (loans.length === 0) {
         loanTableBody.innerHTML = `
             <tr>
-                <td colspan="13" style="text-align: center; padding: 30px; color: #999;">
+                <td colspan="12" style="text-align: center; padding: 30px; color: #999;">
                     ไม่มีข้อมูลเงินกู้ที่ตรงกับเงื่อนไข
                 </td>
             </tr>
@@ -574,29 +574,27 @@ function renderTable(loans) {
         if (status === 'ต้น+ดอก') {
             // แสดงเป็น input ให้แก้ไขได้
             payAmountHtml = `<input type="number" class="pay-amount-input" value="${payAmount}" 
-                onchange="updatePayAmount('${loan.id}', this.value)" 
-                style="width:80px;text-align:right;padding:3px 5px;border:1px solid #ddd;border-radius:4px;">`;
+                onchange="updatePayAmount('${loan.id}', this.value)">`;
         } else if (status === 'ว่าง') {
-            payAmountHtml = '<span style="color:#999;">-</span>';
+            payAmountHtml = '<span class="text-muted">-</span>';
         } else {
-            payAmountHtml = `<strong style="color:#28a745;">${payAmount.toLocaleString()}</strong>`;
+            payAmountHtml = `<strong class="text-success">${payAmount.toLocaleString()}</strong>`;
         }
 
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><input type="checkbox" class="row-checkbox" data-id="${loan.id}" onchange="toggleSelection('${loan.id}')"></td>
-            <td>${index + 1}</td>
-            <td><strong>${loan.nickname || '-'}</strong></td>
-            <td>${loan.nameSurname || '-'}</td>
-            <td>${formatDate(loan.loanDate)}</td>
-            <td>${formatDate(loan.returnDate)}</td>
-            <td class="text-right">${principal.toLocaleString()}</td>
-            <td>${loan.interestType || '-'}</td>
-            <td class="text-right">${interest.toLocaleString()}</td>
-            <td class="text-right"><strong>${total.toLocaleString()}</strong></td>
-            <td class="text-right">${payAmountHtml}</td>
-            <td><span class="status-badge ${statusClass}">${status}</span></td>
-            <td>
+            <td class="col-checkbox"><input type="checkbox" class="row-checkbox" data-id="${loan.id}" onchange="toggleSelection('${loan.id}')"></td>
+            <td class="col-no">${index + 1}</td>
+            <td class="col-nickname"><strong>${loan.nickname || '-'}</strong></td>
+            <td class="col-name">${loan.nameSurname || '-'}</td>
+            <td class="col-date">${formatDate(loan.loanDate)}</td>
+            <td class="col-date">${formatDate(loan.returnDate)}</td>
+            <td class="col-money text-right">${principal.toLocaleString()}</td>
+            <td class="col-money text-right">${interest.toLocaleString()}</td>
+            <td class="col-money text-right"><strong>${total.toLocaleString()}</strong></td>
+            <td class="col-money text-right">${payAmountHtml}</td>
+            <td class="col-status"><span class="status-badge ${statusClass}">${status}</span></td>
+            <td class="col-action">
                 <button class="btn-action btn-detail" onclick="viewLoanDetail('${loan.id}')" title="รายละเอียด">👁️</button>
                 <button class="btn-action btn-edit" onclick="editLoan('${loan.id}')" title="แก้ไข">✏️</button>
                 <button class="btn-action btn-delete" onclick="deleteLoan('${loan.id}')" title="ลบ">🗑️</button>

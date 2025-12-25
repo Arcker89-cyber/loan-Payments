@@ -250,15 +250,42 @@ header h1 { color: #333; margin: 0; font-size: 1.5rem; }
 
 table {
     width: 100%;
-    min-width: 900px;
+    min-width: 850px;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 table th, table td {
-    padding: 12px 10px;
+    padding: 8px 6px;
     text-align: left;
     border-bottom: 1px solid #eee;
+}
+
+/* Loan Table - Column Widths */
+.loan-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.col-checkbox { width: 35px; text-align: center; }
+.col-no { width: 40px; text-align: center; }
+.col-nickname { width: 80px; }
+.col-name { width: 120px; }
+.col-date { width: 85px; text-align: center; }
+.col-money { width: 85px; text-align: right; }
+.col-status { width: 75px; text-align: center; }
+.col-action { width: 100px; text-align: center; }
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.text-muted { color: #999; }
+.text-success { color: #28a745; }
+
+/* Truncate long text */
+.col-nickname, .col-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 table th {
@@ -267,6 +294,8 @@ table th {
     color: #555;
     position: sticky;
     top: 0;
+    font-size: 0.8rem;
+    white-space: nowrap;
 }
 
 /* Sortable Column Headers */
@@ -286,9 +315,9 @@ th.sortable.active-sort {
 }
 
 th.sortable .sort-icon {
-    margin-left: 5px;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     opacity: 0.6;
+    margin-left: 2px;
 }
 
 th.sortable.active-sort .sort-icon {
@@ -298,19 +327,19 @@ th.sortable.active-sort .sort-icon {
 /* Filter Row */
 .filter-row th {
     background: #f0f4f8;
-    padding: 5px;
+    padding: 4px;
     position: sticky;
-    top: 44px;
+    top: 38px;
 }
 
 .filter-row input[type="text"],
 .filter-row input[type="date"],
 .filter-row select {
     width: 100%;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 0.8rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
     box-sizing: border-box;
 }
 
@@ -323,13 +352,13 @@ th.sortable.active-sort .sort-icon {
 }
 
 .btn-clear-filter {
-    padding: 5px 10px;
+    padding: 4px 8px;
     background: #6c757d;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
 .btn-clear-filter:hover {
@@ -340,12 +369,12 @@ table tr:hover { background: #f8f9fa; }
 
 /* Pay Amount Input */
 .pay-amount-input {
-    width: 85px;
+    width: 70px;
     text-align: right;
-    padding: 4px 6px;
+    padding: 3px 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     transition: all 0.2s;
 }
 
@@ -360,9 +389,9 @@ table tr:hover { background: #f8f9fa; }
 }
 
 .status-badge {
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-size: 0.75rem;
     font-weight: bold;
     white-space: nowrap;
 }
@@ -381,12 +410,12 @@ table tr:hover { background: #f8f9fa; }
 
 /* Action Buttons */
 .btn-action {
-    padding: 6px 12px;
-    margin: 0 2px;
+    padding: 4px 8px;
+    margin: 0 1px;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     transition: 0.3s;
 }
 
