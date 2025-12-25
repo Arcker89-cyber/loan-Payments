@@ -703,29 +703,41 @@ function updateBulkActions() {
 // สร้าง loan เดือนถัดไปอัตโนมัติสำหรับสถานะ "ดอก"
 async function createNextMonthLoan(loan) {
     try {
+        console.log("🔄 กำลังสร้าง loan เดือนหน้าสำหรับ:", loan.nickname);
+        console.log("📅 วันที่คืนเดิม:", loan.returnDate);
+        
         // คำนวณวันที่กู้ใหม่ = วันที่คืนเดิม
         const newLoanDate = loan.returnDate;
         if (!newLoanDate) {
-            console.log("ไม่มีวันที่คืน ไม่สร้าง loan เดือนหน้า");
+            console.log("❌ ไม่มีวันที่คืน ไม่สร้าง loan เดือนหน้า");
             return null;
         }
         
         // คำนวณวันที่คืนใหม่ = วันที่กู้ใหม่ + 1 เดือน
         const newReturnDate = addOneMonthSmart(newLoanDate);
+        console.log("📅 วันที่กู้ใหม่:", newLoanDate);
+        console.log("📅 วันที่คืนใหม่:", newReturnDate);
         
-        // ตรวจสอบว่ามี loan ในเดือนนั้นแล้วหรือยัง
+        // ตรวจสอบว่ามี loan ในเดือนนั้นแล้วหรือยัง (ใช้ client-side filter แทน)
         const [year, month] = newLoanDate.split('-');
         const monthStart = `${year}-${month}-01`;
         const monthEnd = `${year}-${month}-31`;
         
-        const existingLoan = await db.collection("loans")
+        // ดึง loan ทั้งหมดของคนนี้แล้ว filter ฝั่ง client
+        const allLoansSnapshot = await db.collection("loans")
             .where("nickname", "==", loan.nickname)
-            .where("loanDate", ">=", monthStart)
-            .where("loanDate", "<=", monthEnd)
             .get();
         
-        if (!existingLoan.empty) {
-            console.log(`มี loan ของ ${loan.nickname} ในเดือน ${month}/${year} แล้ว ไม่สร้างซ้ำ`);
+        let hasExisting = false;
+        allLoansSnapshot.forEach(doc => {
+            const loanDate = doc.data().loanDate;
+            if (loanDate >= monthStart && loanDate <= monthEnd) {
+                hasExisting = true;
+            }
+        });
+        
+        if (hasExisting) {
+            console.log(`⚠️ มี loan ของ ${loan.nickname} ในเดือน ${month}/${year} แล้ว ไม่สร้างซ้ำ`);
             return null;
         }
         
@@ -745,16 +757,17 @@ async function createNextMonthLoan(loan) {
             interestRate: loan.interestRate || 20,
             interest: loan.interest,
             status: 'ว่าง', // สถานะเริ่มต้นเป็น "ว่าง"
-            summary: `ต่อจากเดือนก่อน (${loan.nickname})`,
+            summary: `ต่อจากเดือนก่อน`,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        console.log("📝 กำลังบันทึก loan ใหม่:", newLoan);
         const docRef = await db.collection("loans").add(newLoan);
         console.log(`✅ สร้าง loan เดือนหน้าสำหรับ ${loan.nickname} สำเร็จ (ID: ${docRef.id})`);
         return docRef.id;
         
     } catch (error) {
-        console.error("Error creating next month loan:", error);
+        console.error("❌ Error creating next month loan:", error);
         return null;
     }
 }
@@ -781,9 +794,11 @@ async function bulkChangeStatus(newStatus) {
                     selectedLoans.forEach(id => {
                         const loan = allLoans.find(l => l.id === id);
                         if (loan) {
+                            console.log("📋 Loan to create next month:", loan.nickname, loan.returnDate);
                             loansToCreateNextMonth.push(loan);
                         }
                     });
+                    console.log(`📊 จำนวน loan ที่จะสร้างเดือนหน้า: ${loansToCreateNextMonth.length}`);
                 }
                 
                 // อัพเดทสถานะ
@@ -793,14 +808,17 @@ async function bulkChangeStatus(newStatus) {
                 });
                 
                 await batch.commit();
+                console.log("✅ อัพเดทสถานะเรียบร้อย");
                 
                 // สร้าง loan เดือนหน้า
                 let createdCount = 0;
-                if (newStatus === 'ดอก') {
+                if (newStatus === 'ดอก' && loansToCreateNextMonth.length > 0) {
+                    console.log("🔄 เริ่มสร้าง loan เดือนหน้า...");
                     for (const loan of loansToCreateNextMonth) {
                         const result = await createNextMonthLoan(loan);
                         if (result) createdCount++;
                     }
+                    console.log(`✅ สร้าง loan เดือนหน้าสำเร็จ: ${createdCount} รายการ`);
                 }
                 
                 let message = `เปลี่ยนสถานะ ${selectedLoans.size} รายการเรียบร้อย`;
@@ -841,6 +859,68 @@ async function bulkDelete() {
                 loadDashboardData();
                 
             } catch (error) {
+                showToast("เกิดข้อผิดพลาด: " + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ============ BULK CREATE NEXT MONTH ============
+async function bulkCreateNextMonth() {
+    if (selectedLoans.size === 0) return;
+    
+    // เก็บ loan ที่เลือก
+    let loansToCreate = [];
+    selectedLoans.forEach(id => {
+        const loan = allLoans.find(l => l.id === id);
+        if (loan && loan.returnDate) {
+            loansToCreate.push(loan);
+        }
+    });
+    
+    if (loansToCreate.length === 0) {
+        showToast("ไม่มีรายการที่สามารถสร้างเดือนหน้าได้ (ไม่มีวันที่คืน)", 'warning');
+        return;
+    }
+    
+    showConfirm(
+        '📆 สร้างรายการเดือนหน้า',
+        `ต้องการสร้างรายการเดือนหน้าสำหรับ ${loansToCreate.length} รายการหรือไม่?\n\n` +
+        `- วันที่กู้ใหม่ = วันที่คืนเดิม\n` +
+        `- วันที่คืนใหม่ = วันที่กู้ใหม่ + 1 เดือน\n` +
+        `- สถานะ = "ว่าง"`,
+        async () => {
+            try {
+                let createdCount = 0;
+                let skippedCount = 0;
+                
+                console.log(`🔄 เริ่มสร้าง loan เดือนหน้า ${loansToCreate.length} รายการ...`);
+                
+                for (const loan of loansToCreate) {
+                    console.log(`📋 Processing: ${loan.nickname}`);
+                    const result = await createNextMonthLoan(loan);
+                    if (result) {
+                        createdCount++;
+                    } else {
+                        skippedCount++;
+                    }
+                }
+                
+                let message = '';
+                if (createdCount > 0) {
+                    message = `✅ สร้างรายการเดือนหน้า ${createdCount} รายการสำเร็จ`;
+                }
+                if (skippedCount > 0) {
+                    message += message ? '\n' : '';
+                    message += `⚠️ ข้าม ${skippedCount} รายการ (มีอยู่แล้ว)`;
+                }
+                
+                showToast(message || 'ไม่มีรายการที่สร้างได้', createdCount > 0 ? 'success' : 'warning');
+                clearSelection();
+                loadDashboardData();
+                
+            } catch (error) {
+                console.error("Error in bulkCreateNextMonth:", error);
                 showToast("เกิดข้อผิดพลาด: " + error.message, 'error');
             }
         }
