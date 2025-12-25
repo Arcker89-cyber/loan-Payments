@@ -699,17 +699,94 @@ function updateBulkActions() {
     }
 }
 
+// ============ CREATE NEXT MONTH LOAN ============
+// สร้าง loan เดือนถัดไปอัตโนมัติสำหรับสถานะ "ดอก"
+async function createNextMonthLoan(loan) {
+    try {
+        // คำนวณวันที่กู้ใหม่ = วันที่คืนเดิม
+        const newLoanDate = loan.returnDate;
+        if (!newLoanDate) {
+            console.log("ไม่มีวันที่คืน ไม่สร้าง loan เดือนหน้า");
+            return null;
+        }
+        
+        // คำนวณวันที่คืนใหม่ = วันที่กู้ใหม่ + 1 เดือน
+        const newReturnDate = addOneMonthSmart(newLoanDate);
+        
+        // ตรวจสอบว่ามี loan ในเดือนนั้นแล้วหรือยัง
+        const [year, month] = newLoanDate.split('-');
+        const monthStart = `${year}-${month}-01`;
+        const monthEnd = `${year}-${month}-31`;
+        
+        const existingLoan = await db.collection("loans")
+            .where("nickname", "==", loan.nickname)
+            .where("loanDate", ">=", monthStart)
+            .where("loanDate", "<=", monthEnd)
+            .get();
+        
+        if (!existingLoan.empty) {
+            console.log(`มี loan ของ ${loan.nickname} ในเดือน ${month}/${year} แล้ว ไม่สร้างซ้ำ`);
+            return null;
+        }
+        
+        // สร้าง loan ใหม่
+        const newLoan = {
+            customerId: loan.customerId || '',
+            nickname: loan.nickname,
+            nameSurname: loan.nameSurname || '',
+            idCard: loan.idCard || '',
+            telephone: loan.telephone || '',
+            birthday: loan.birthday || '',
+            address: loan.address || '',
+            loanDate: newLoanDate,
+            returnDate: newReturnDate,
+            principal: loan.principal,
+            interestType: loan.interestType || 'รายเดือน',
+            interestRate: loan.interestRate || 20,
+            interest: loan.interest,
+            status: 'ว่าง', // สถานะเริ่มต้นเป็น "ว่าง"
+            summary: `ต่อจากเดือนก่อน (${loan.nickname})`,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        const docRef = await db.collection("loans").add(newLoan);
+        console.log(`✅ สร้าง loan เดือนหน้าสำหรับ ${loan.nickname} สำเร็จ (ID: ${docRef.id})`);
+        return docRef.id;
+        
+    } catch (error) {
+        console.error("Error creating next month loan:", error);
+        return null;
+    }
+}
+
 // ============ BULK OPERATIONS ============
 async function bulkChangeStatus(newStatus) {
     if (selectedLoans.size === 0) return;
     
+    let confirmMessage = `ต้องการเปลี่ยนสถานะ ${selectedLoans.size} รายการเป็น "${newStatus}" หรือไม่?`;
+    if (newStatus === 'ดอก') {
+        confirmMessage += '\n\n💡 ระบบจะสร้างรายการเดือนถัดไปให้อัตโนมัติ';
+    }
+    
     showConfirm(
         'เปลี่ยนสถานะ',
-        `ต้องการเปลี่ยนสถานะ ${selectedLoans.size} รายการเป็น "${newStatus}" หรือไม่?`,
+        confirmMessage,
         async () => {
             try {
                 const batch = db.batch();
+                let loansToCreateNextMonth = [];
                 
+                // เก็บ loan ที่ต้องสร้างเดือนหน้า
+                if (newStatus === 'ดอก') {
+                    selectedLoans.forEach(id => {
+                        const loan = allLoans.find(l => l.id === id);
+                        if (loan) {
+                            loansToCreateNextMonth.push(loan);
+                        }
+                    });
+                }
+                
+                // อัพเดทสถานะ
                 selectedLoans.forEach(id => {
                     const ref = db.collection("loans").doc(id);
                     batch.update(ref, { status: newStatus });
@@ -717,7 +794,21 @@ async function bulkChangeStatus(newStatus) {
                 
                 await batch.commit();
                 
-                showToast(`เปลี่ยนสถานะ ${selectedLoans.size} รายการเรียบร้อย`, 'success');
+                // สร้าง loan เดือนหน้า
+                let createdCount = 0;
+                if (newStatus === 'ดอก') {
+                    for (const loan of loansToCreateNextMonth) {
+                        const result = await createNextMonthLoan(loan);
+                        if (result) createdCount++;
+                    }
+                }
+                
+                let message = `เปลี่ยนสถานะ ${selectedLoans.size} รายการเรียบร้อย`;
+                if (createdCount > 0) {
+                    message += ` และสร้างรายการเดือนหน้า ${createdCount} รายการ`;
+                }
+                
+                showToast(message, 'success');
                 clearSelection();
                 loadDashboardData();
                 
@@ -783,12 +874,41 @@ loanForm.addEventListener("submit", async (e) => {
         const editId = loanForm.dataset.editId;
         
         if (editId) {
+            // ดึง loan เดิมเพื่อเช็คว่าสถานะเปลี่ยนเป็น "ดอก" หรือไม่
+            const oldLoan = allLoans.find(l => l.id === editId);
+            const wasNotDok = oldLoan && oldLoan.status !== 'ดอก';
+            const isNowDok = loanData.status === 'ดอก';
+            
             await db.collection("loans").doc(editId).update(loanData);
-            showToast("อัปเดตข้อมูลเรียบร้อยแล้ว", 'success');
+            
+            // ถ้าเปลี่ยนจากสถานะอื่นเป็น "ดอก" ให้สร้าง loan เดือนหน้า
+            if (wasNotDok && isNowDok) {
+                const loanWithId = { ...loanData, id: editId };
+                const created = await createNextMonthLoan(loanWithId);
+                if (created) {
+                    showToast("อัปเดตข้อมูลเรียบร้อย และสร้างรายการเดือนหน้าแล้ว", 'success');
+                } else {
+                    showToast("อัปเดตข้อมูลเรียบร้อยแล้ว", 'success');
+                }
+            } else {
+                showToast("อัปเดตข้อมูลเรียบร้อยแล้ว", 'success');
+            }
         } else {
             loanData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection("loans").add(loanData);
-            showToast("เพิ่มข้อมูลเงินกู้เรียบร้อยแล้ว", 'success');
+            const docRef = await db.collection("loans").add(loanData);
+            
+            // ถ้าเพิ่มใหม่และสถานะเป็น "ดอก" ให้สร้าง loan เดือนหน้า
+            if (loanData.status === 'ดอก') {
+                const loanWithId = { ...loanData, id: docRef.id };
+                const created = await createNextMonthLoan(loanWithId);
+                if (created) {
+                    showToast("เพิ่มข้อมูลเงินกู้เรียบร้อย และสร้างรายการเดือนหน้าแล้ว", 'success');
+                } else {
+                    showToast("เพิ่มข้อมูลเงินกู้เรียบร้อยแล้ว", 'success');
+                }
+            } else {
+                showToast("เพิ่มข้อมูลเงินกู้เรียบร้อยแล้ว", 'success');
+            }
         }
 
         closeModalFunc();

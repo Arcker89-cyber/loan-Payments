@@ -365,7 +365,23 @@ th.sortable.active-sort .sort-icon {
     background: #5a6268;
 }
 
-table tr:hover { background: #f8f9fa; }
+/* Table Row Hover - Elevated Effect */
+table tbody tr {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+table tbody tr:hover {
+    background: #e3f2fd;
+    transform: translateY(-2px) scale(1.005);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    position: relative;
+    z-index: 1;
+}
+
+table tbody tr:hover td {
+    border-bottom-color: transparent;
+}
 
 /* Pay Amount Input */
 .pay-amount-input {
