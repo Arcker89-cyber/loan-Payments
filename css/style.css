@@ -243,7 +243,7 @@ header h1 {
 .card.green { background: linear-gradient(135deg, #28a745, #1e7e34); }
 .card.yellow { background: linear-gradient(135deg, #ffc107, #e0a800); color: #333; }
 .card.red { background: linear-gradient(135deg, #dc3545, #c82333); }
-.card.purple { background: linear-gradient(135deg, #6f42c1, #5a32a3); }
+.card.orange { background: linear-gradient(135deg, #FF3F34, #e02d23); }
 .card.teal { background: linear-gradient(135deg, #17a2b8, #138496); }
 
 /* Charts Grid */

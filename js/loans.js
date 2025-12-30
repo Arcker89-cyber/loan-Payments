@@ -290,7 +290,7 @@ async function loadAllLoans() {
         let totalInterest = 0;
         let totalPaid = 0;
         let activeCount = 0;
-        let totalSum = 0;
+        let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้
 
         snapshot.forEach(doc => {
             const data = { id: doc.id, ...doc.data() };
@@ -301,17 +301,21 @@ async function loadAllLoans() {
 
             totalPrincipal += principal;
             totalInterest += interest;
-            totalSum += (principal + interest);
 
-            // รองรับทั้งสถานะเก่าและใหม่
-            if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+            // คำนวณดอกเบี้ยที่เก็บได้
+            if (data.status === "ดอก") {
+                // สถานะดอก = เก็บดอกเบี้ย 20%
+                collectedInterest += interest;
+            } else if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+                // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
+                collectedInterest += (principal * 0.15);
                 totalPaid += (principal + interest);
-            } else {
+            } else if (data.status !== "ว่าง") {
                 activeCount++;
             }
         });
 
-        updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
+        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
         applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
@@ -358,7 +362,8 @@ async function loadDataWithJsFilter() {
         const snapshot = await db.collection("loans").get();
         
         allLoans = [];
-        let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0, totalSum = 0;
+        let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0;
+        let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้เดือนนี้
         
         snapshot.forEach(doc => {
             const data = { id: doc.id, ...doc.data() };
@@ -373,19 +378,23 @@ async function loadDataWithJsFilter() {
 
                     totalPrincipal += principal;
                     totalInterest += interest;
-                    totalSum += (principal + interest);
 
-                    // รองรับทั้งสถานะเก่าและใหม่
-                    if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+                    // คำนวณดอกเบี้ยที่เก็บได้
+                    if (data.status === "ดอก") {
+                        // สถานะดอก = เก็บดอกเบี้ย 20%
+                        collectedInterest += interest;
+                    } else if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+                        // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
+                        collectedInterest += (principal * 0.15);
                         totalPaid += (principal + interest);
-                    } else {
+                    } else if (data.status !== "ว่าง") {
                         activeCount++;
                     }
                 }
             }
         });
 
-        updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
+        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
         applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
@@ -396,7 +405,8 @@ async function loadDataWithJsFilter() {
 
 function processLoanData(snapshot) {
     allLoans = [];
-    let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0, totalSum = 0;
+    let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0;
+    let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้เดือนนี้
 
     snapshot.forEach(doc => {
         const data = { id: doc.id, ...doc.data() };
@@ -407,17 +417,21 @@ function processLoanData(snapshot) {
 
         totalPrincipal += principal;
         totalInterest += interest;
-        totalSum += (principal + interest);
 
-        // รองรับทั้งสถานะเก่าและใหม่
-        if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+        // คำนวณดอกเบี้ยที่เก็บได้
+        if (data.status === "ดอก") {
+            // สถานะดอก = เก็บดอกเบี้ย 20%
+            collectedInterest += interest;
+        } else if (data.status === "ปิดจบ" || data.status === "คืนแล้ว" || data.status === "ชำระแล้ว") {
+            // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
+            collectedInterest += (principal * 0.15);
             totalPaid += (principal + interest);
-        } else {
+        } else if (data.status !== "ว่าง") {
             activeCount++;
         }
     });
 
-    updateDashboardCards(totalPrincipal, totalInterest, totalSum, totalPaid, activeCount, allLoans.length);
+    updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
     applyFilters(); // ใช้ sorting และ filtering
     renderChart();
     saveMonthlyData(totalPrincipal, totalInterest, totalPaid, allLoans.length, activeCount);
@@ -425,10 +439,10 @@ function processLoanData(snapshot) {
     console.log("✅ Data loaded:", allLoans.length, "records");
 }
 
-function updateDashboardCards(principal, interest, sum, paid, active, count) {
+function updateDashboardCards(principal, interest, collectedInterest, paid, active, count) {
     document.getElementById("totalLoans").textContent = principal.toLocaleString() + " ฿";
     document.getElementById("totalInterest").textContent = interest.toLocaleString() + " ฿";
-    document.getElementById("totalSum").textContent = sum.toLocaleString() + " ฿";
+    document.getElementById("collectedInterest").textContent = collectedInterest.toLocaleString() + " ฿";
     document.getElementById("paidAmount").textContent = paid.toLocaleString() + " ฿";
     document.getElementById("activeLoans").textContent = active + " รายการ";
     document.getElementById("loanCount").textContent = count + " รายการ";
