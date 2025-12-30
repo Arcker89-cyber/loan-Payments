@@ -443,7 +443,7 @@ function processLoanData(snapshot) {
     updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, pendingCount, allLoans.length);
     applyFilters(); // ใช้ sorting และ filtering
     renderChart();
-    saveMonthlyData(totalPrincipal, totalInterest, totalPaid, allLoans.length, activeCount);
+    saveMonthlyData(totalPrincipal, totalInterest, totalPaid, allLoans.length, pendingCount);
 
     console.log("✅ Data loaded:", allLoans.length, "records");
 }
