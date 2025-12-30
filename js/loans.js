@@ -289,7 +289,7 @@ async function loadAllLoans() {
         let totalPrincipal = 0;
         let totalInterest = 0;
         let totalPaid = 0;
-        let activeCount = 0;
+        let pendingCount = 0;
         let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้
 
         snapshot.forEach(doc => {
@@ -310,12 +310,15 @@ async function loadAllLoans() {
                 // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
                 collectedInterest += (principal * 0.15);
                 totalPaid += (principal + interest);
-            } else if (data.status !== "ว่าง") {
-                activeCount++;
+            }
+            
+            // นับจำนวนยังค้าง = สถานะ "ว่าง" หรือไม่มีสถานะ
+            if (!data.status || data.status === "ว่าง") {
+                pendingCount++;
             }
         });
 
-        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
+        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, pendingCount, allLoans.length);
         applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
@@ -362,7 +365,7 @@ async function loadDataWithJsFilter() {
         const snapshot = await db.collection("loans").get();
         
         allLoans = [];
-        let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0;
+        let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, pendingCount = 0;
         let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้เดือนนี้
         
         snapshot.forEach(doc => {
@@ -387,14 +390,17 @@ async function loadDataWithJsFilter() {
                         // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
                         collectedInterest += (principal * 0.15);
                         totalPaid += (principal + interest);
-                    } else if (data.status !== "ว่าง") {
-                        activeCount++;
+                    }
+                    
+                    // นับจำนวนยังค้าง = สถานะ "ว่าง" หรือไม่มีสถานะ
+                    if (!data.status || data.status === "ว่าง") {
+                        pendingCount++;
                     }
                 }
             }
         });
 
-        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
+        updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, pendingCount, allLoans.length);
         applyFilters(); // ใช้ sorting และ filtering
         renderChart();
 
@@ -405,7 +411,7 @@ async function loadDataWithJsFilter() {
 
 function processLoanData(snapshot) {
     allLoans = [];
-    let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, activeCount = 0;
+    let totalPrincipal = 0, totalInterest = 0, totalPaid = 0, pendingCount = 0;
     let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้เดือนนี้
 
     snapshot.forEach(doc => {
@@ -426,12 +432,15 @@ function processLoanData(snapshot) {
             // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
             collectedInterest += (principal * 0.15);
             totalPaid += (principal + interest);
-        } else if (data.status !== "ว่าง") {
-            activeCount++;
+        }
+        
+        // นับจำนวนยังค้าง = สถานะ "ว่าง" หรือไม่มีสถานะ
+        if (!data.status || data.status === "ว่าง") {
+            pendingCount++;
         }
     });
 
-    updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, activeCount, allLoans.length);
+    updateDashboardCards(totalPrincipal, totalInterest, collectedInterest, totalPaid, pendingCount, allLoans.length);
     applyFilters(); // ใช้ sorting และ filtering
     renderChart();
     saveMonthlyData(totalPrincipal, totalInterest, totalPaid, allLoans.length, activeCount);
@@ -636,7 +645,7 @@ function renderTable(loans) {
             <td class="col-money text-right">${payAmountHtml}</td>
             <td class="col-status"><span class="status-badge ${statusClass}">${status}</span></td>
             <td class="col-action">
-                <button class="btn-action btn-detail" onclick="viewLoanDetail('${loan.id}')" title="รายละเอียด">👁️</button>
+                <button class="btn-action btn-detail" onclick="viewLoanDetail('${loan.id}')" title="รายละเอียด">📄</button>
                 <button class="btn-action btn-edit" onclick="editLoan('${loan.id}')" title="แก้ไข">✏️</button>
                 <button class="btn-action btn-delete" onclick="deleteLoan('${loan.id}')" title="ลบ">🗑️</button>
             </td>
