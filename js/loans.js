@@ -1202,10 +1202,8 @@ async function renderStatusLineChart() {
         // ดึงข้อมูลย้อนหลัง 6 เดือน
         const now = new Date();
         const labels = [];
-        const dataEmpty = [];  // ว่าง
-        const dataInterest = []; // ดอก
-        const dataPrincipal = []; // ต้น+ดอก
-        const dataClosed = []; // ปิดจบ
+        const dataExpected = [];  // ดอกเบี้ยควรจะได้
+        const dataCollected = []; // ดอกเบี้ยเดือนนี้ (ที่เก็บได้จริง)
         
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -1213,30 +1211,38 @@ async function renderStatusLineChart() {
             const month = d.getMonth() + 1;
             labels.push(`${thaiMonthsShort[month]} ${(year + 543) % 100}`);
             
-            // นับจำนวนแต่ละสถานะในเดือนนั้น
+            // Query loans for this month
             const monthStr = `${year}-${String(month).padStart(2, '0')}`;
             
-            let empty = 0, interest = 0, principal = 0, closed = 0;
+            let expectedInterest = 0;  // ดอกเบี้ยควรจะได้ (รวมทั้งหมด)
+            let collectedInterest = 0; // ดอกเบี้ยที่เก็บได้จริง
             
-            // Query loans for this month
             const snapshot = await db.collection("loans")
                 .where("loanDate", ">=", `${monthStr}-01`)
                 .where("loanDate", "<=", `${monthStr}-31`)
                 .get();
             
             snapshot.forEach(doc => {
-                const status = doc.data().status || 'ว่าง';
-                if (status === 'ว่าง') empty++;
-                else if (status === 'ดอก' || status === 'กำลังผ่อน') interest++;
-                else if (status === 'ต้น+ดอก' || status === 'ค้างชำระ' || status === 'เกินกำหนด') principal++;
-                else if (status === 'ปิดจบ' || status === 'ชำระแล้ว' || status === 'คืนแล้ว') closed++;
-                else empty++;
+                const data = doc.data();
+                const principal = parseFloat(data.principal) || 0;
+                const interest = parseFloat(data.interest) || 0;
+                const status = data.status || 'ว่าง';
+                
+                // ดอกเบี้ยควรจะได้ = รวมดอกเบี้ยทั้งหมด
+                expectedInterest += interest;
+                
+                // ดอกเบี้ยที่เก็บได้จริง
+                if (status === 'ดอก') {
+                    // สถานะดอก = เก็บดอกเบี้ย 20%
+                    collectedInterest += interest;
+                } else if (status === 'ปิดจบ' || status === 'คืนแล้ว' || status === 'ชำระแล้ว') {
+                    // สถานะปิดจบ = เก็บดอก 15% ของเงินต้น
+                    collectedInterest += (principal * 0.15);
+                }
             });
             
-            dataEmpty.push(empty);
-            dataInterest.push(interest);
-            dataPrincipal.push(principal);
-            dataClosed.push(closed);
+            dataExpected.push(expectedInterest);
+            dataCollected.push(collectedInterest);
         }
         
         statusLineChart = new Chart(ctx.getContext('2d'), {
@@ -1245,36 +1251,26 @@ async function renderStatusLineChart() {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'ว่าง',
-                        data: dataEmpty,
-                        borderColor: '#6c757d',
-                        backgroundColor: 'rgba(108,117,125,0.1)',
-                        fill: false,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'ดอก',
-                        data: dataInterest,
+                        label: 'ดอกเบี้ยควรจะได้',
+                        data: dataExpected,
                         borderColor: '#ffc107',
-                        backgroundColor: 'rgba(255,193,7,0.1)',
-                        fill: false,
-                        tension: 0.3
+                        backgroundColor: 'rgba(255,193,7,0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#ffc107'
                     },
                     {
-                        label: 'ต้น+ดอก',
-                        data: dataPrincipal,
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220,53,69,0.1)',
-                        fill: false,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'ปิดจบ',
-                        data: dataClosed,
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40,167,69,0.1)',
-                        fill: false,
-                        tension: 0.3
+                        label: 'ดอกเบี้ยเดือนนี้',
+                        data: dataCollected,
+                        borderColor: '#FF3F34',
+                        backgroundColor: 'rgba(255,63,52,0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#FF3F34'
                     }
                 ]
             },
@@ -1284,20 +1280,31 @@ async function renderStatusLineChart() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + ' ฿';
+                            }
+                        }
                     }
                 },
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { font: { size: 10 }, boxWidth: 12 }
+                        labels: { font: { size: 11 }, boxWidth: 15 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toLocaleString() + ' ฿';
+                            }
+                        }
                     }
                 }
             }
         });
         
     } catch (error) {
-        console.error("Error rendering status line chart:", error);
+        console.error("Error rendering interest line chart:", error);
     }
 }
 
